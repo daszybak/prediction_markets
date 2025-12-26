@@ -31,7 +31,8 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 		mult := PriceScale
 		for i < len(data) {
 			mult /= 10
-			res += int64(data[i] - '0') * mult
+			res += int64(data[i]-'0') * mult
+			i++
 		}
 	}
 
