@@ -10,7 +10,7 @@ type Price int64
 
 var _ json.Unmarshaler = (*Price)(nil)
 
-const PriceScale = 1_000_000
+const PriceScale int64 = 1_000_000
 
 func (p *Price) UnmarshalJSON(data []byte) error {
 	if len(data) > 2 && data[0] == '"' && data[len(data)-1] == '"' {
@@ -21,14 +21,18 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 	var res int64
 	i := 0
 
-	for i < len(data) {
-		if data[i] == '.' {
-			i++
-			continue
-		}
-
+	for i < len(data) && data[i] != '.' {
 		res = res*10 + int64(data[i]-'0')*PriceScale
 		i++
+	}
+
+	if i < len(data) && data[i] == '.' {
+		i++
+		mult := PriceScale
+		for i < len(data) {
+			mult /= 10
+			res += int64(data[i] - '0') * mult
+		}
 	}
 
 	*p = Price(res)
