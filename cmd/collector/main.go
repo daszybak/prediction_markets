@@ -8,20 +8,22 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/daszybak/polymarket/internal/polymarket/gamma"
-	"github.com/daszybak/polymarket/internal/polymarket/websocket"
+	"github.com/daszybak/prediction_markets/internal/polymarket/gamma"
+	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
 	"go.yaml.in/yaml/v4"
 )
 
 type config struct {
-	PolyMarket struct {
-		WebsocketURL string `yaml:"ws_url"`
-		GammaURL     string `yaml:"gamma_url"`
-		ClobURL      string `yaml:"clob_url"`
-		Events       []struct {
-			Slug string `yaml:"slug"`
-		} `yaml:"events"`
-	} `yaml:"polymarket"`
+	Platforms struct {
+		PolyMarket struct {
+			WebsocketURL string `yaml:"ws_url"`
+			GammaURL     string `yaml:"gamma_url"`
+			ClobURL      string `yaml:"clob_url"`
+			Events       []struct {
+				Slug string `yaml:"slug"`
+			} `yaml:"events"`
+		} `yaml:"polymarket"`
+	} `yaml:"platforms"`
 }
 
 func main() {
@@ -39,10 +41,10 @@ func main() {
 		log.Fatalf("Couldn't parse config: %v", err)
 	}
 
-	gammaClient := gamma.New(cfg.PolyMarket.GammaURL)
+	gammaClient := gamma.New(cfg.Platforms.PolyMarket.GammaURL)
 
 	markets := make([]*gamma.Market, 0)
-	for _, m := range cfg.PolyMarket.Events {
+	for _, m := range cfg.Platforms.PolyMarket.Events {
 		event := &gamma.Event{}
 		event, err = gammaClient.GetEventBySlug(m.Slug)
 		if err != nil {
@@ -55,7 +57,7 @@ func main() {
 	rawMarkets, _ := json.Marshal(markets)
 	log.Printf("markets: %s", rawMarkets)
 
-	ws, err := websocket.New(ctx, cfg.PolyMarket.WebsocketURL+"/market")
+	ws, err := websocket.New(ctx, cfg.Platforms.PolyMarket.WebsocketURL+"/market")
 	if err != nil {
 		log.Fatalf("Couldn't open websocket connection: %v", err)
 	}

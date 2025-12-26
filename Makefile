@@ -1,5 +1,5 @@
 tgt_dir := target
-pkg := github.com/daszybak/polymarket
+pkg := github.com/daszybak/prediction_markets
 src_dirs := cmd internal pkg
 
 deps := $(shell find $(src_dirs) -name '*.go' -type f 2>/dev/null)
@@ -8,12 +8,12 @@ deps := $(shell find $(src_dirs) -name '*.go' -type f 2>/dev/null)
 
 all: build
 
-# Build the main binary.
-build: $(tgt_dir)/polymarket
+# Build the collector binary.
+build: $(tgt_dir)/collector
 
-$(tgt_dir)/polymarket: $(deps) | $(tgt_dir)
+$(tgt_dir)/collector: $(deps) | $(tgt_dir)
 	( \
-		cd cmd/polymarket && \
+		cd cmd/collector && \
 		CGO_ENABLED=0 go build -o '../../$@' \
 	)
 

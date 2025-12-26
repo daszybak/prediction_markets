@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-IMAGE_NAME="polymarket-build"
+IMAGE_NAME="prediction_markets-build"
 DOCKERFILE="${PROJECT_ROOT}/Dockerfile"
 
 # Build the builder image if it doesn't exist or is outdated.

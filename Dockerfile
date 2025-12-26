@@ -32,7 +32,7 @@ RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-COPY --from=build /app/target/polymarket /app/polymarket
+COPY --from=build /app/target/collector /app/collector
 COPY config.sample.yaml /app/config.yaml
 
-ENTRYPOINT ["/app/polymarket"]
+ENTRYPOINT ["/app/collector"]

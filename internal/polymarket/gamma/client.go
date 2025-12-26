@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/daszybak/polymarket/pkg/httpclient"
+	"github.com/daszybak/prediction_markets/pkg/httpclient"
 )
 
 type Client struct {

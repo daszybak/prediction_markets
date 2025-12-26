@@ -44,13 +44,13 @@ fmt:
 clean:
     rm -rf {{tgt_dir}}
 
-# Run the application.
+# Run the collector.
 run *args:
-    go run ./cmd/polymarket {{args}}
+    go run ./cmd/collector {{args}}
 
 # Build the Docker build environment image.
 docker-build:
-    docker build --target builder -t polymarket-build .
+    docker build --target builder -t prediction_markets-build .
 
 # Run a command in the Docker build environment.
 docker-run *args:
@@ -70,4 +70,4 @@ docker-shell:
 
 # Build the production image.
 docker-build-prod:
-    docker build --target runtime -t polymarket:latest .
+    docker build --target runtime -t prediction_markets:latest .

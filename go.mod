@@ -1,4 +1,4 @@
-module github.com/daszybak/polymarket
+module github.com/daszybak/prediction_markets
 
 go 1.25.5
 

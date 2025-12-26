@@ -1,20 +1,27 @@
-# Polymarket Trading Engine Configuration
+# Prediction Markets Configuration
 #
 # Copy this file to config.yaml and replace placeholders with actual values.
 # You can use `envsubst` to replace variables:
 #
 #     envsubst < config.sample.yaml > config.yaml
 
-polymarket:
-  # Polymarket API endpoints
-  ws_url: '${POLYMARKET_WS_URL}'
-  gamma_url: '${POLYMARKET_GAMMA_URL}'
-  clob_url: '${POLYMARKET_CLOB_URL}'
+# Prediction market platforms
+platforms:
+  polymarket:
+    enabled: ${POLYMARKET_ENABLED}
+    ws_url: '${POLYMARKET_WS_URL}'
+    gamma_url: '${POLYMARKET_GAMMA_URL}'
+    clob_url: '${POLYMARKET_CLOB_URL}'
+    events: [${POLYMARKET_EVENTS}]
 
-  # Events to track (by slug)
-  events: [${POLYMARKET_EVENTS}]
+  kalshi:
+    enabled: ${KALSHI_ENABLED}
+    api_url: '${KALSHI_API_URL}'
+    ws_url: '${KALSHI_WS_URL}'
+    api_key: '${KALSHI_API_KEY}'
+    events: [${KALSHI_EVENTS}]
 
-# Redis configuration (for shadow order book)
+# Redis configuration (for order book state and signals)
 redis:
   host: '${REDIS_HOST}'
   port: ${REDIS_PORT}
@@ -23,12 +30,12 @@ redis:
 
 # Trading configuration
 trading:
-  # Wallet configuration
+  # Wallet configuration (for on-chain platforms)
   wallet:
     private_key: '${WALLET_PRIVATE_KEY}'
     address: '${WALLET_ADDRESS}'
 
-  # Polygon network
+  # Polygon network (for Polymarket)
   polygon:
     rpc_url: '${POLYGON_RPC_URL}'
     chain_id: ${POLYGON_CHAIN_ID}
@@ -38,6 +45,11 @@ trading:
     max_position_size: ${MAX_POSITION_SIZE}
     max_order_size: ${MAX_ORDER_SIZE}
     min_spread: ${MIN_SPREAD}
+
+  # Arbitrage settings
+  arbitrage:
+    min_edge: ${MIN_ARBITRAGE_EDGE}
+    max_slippage: ${MAX_SLIPPAGE}
 
 # Logging
 logging:

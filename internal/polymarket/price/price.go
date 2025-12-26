@@ -23,8 +23,8 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 
 	for i < len(data) {
 		if data[i] == '.' {
-			continue
 			i++
+			continue
 		}
 
 		res = res*10 + int64(data[i]-'0')*PriceScale

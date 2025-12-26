@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/daszybak/polymarket/pkg/httpclient"
+	"github.com/daszybak/prediction_markets/internal/polymarket/price"
+	"github.com/daszybak/prediction_markets/pkg/httpclient"
 )
 
 type Client struct {
@@ -21,13 +22,16 @@ func New(baseURL string) *Client {
 }
 
 type MarketToken struct {
-	Outcome string `json:"outcome"`
-	Price
-	TokenID string `json:"token_id"`
-	Winner  bool   `json:"winner"`
+	Outcome string                    `json:"outcome"`
+	Price   polymarketprice.Price     `json:"price"`
+	TokenID string                    `json:"token_id"`
+	Winner  bool                      `json:"winner"`
 }
 
-type Market struct{}
+type Market struct{
+	ConditionID string `json:"condition_id"`
+	Tokens MarketToken `json:"tokens"`
+}
 
 func (c *Client) GetMarketByConditionID(conditionID string) (*Market, error) {
 	return httpclient.GetResource[*Market](c.httpClient, c.baseURL, "/markets"+conditionID, []int{200})

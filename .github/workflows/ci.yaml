@@ -28,21 +28,21 @@ jobs:
           context: .
           target: builder
           load: true
-          tags: polymarket-build:ci
+          tags: prediction_markets-build:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run tests
         run: |
-          docker run --rm polymarket-build:ci go test -v ./cmd/... ./internal/... ./pkg/...
+          docker run --rm prediction_markets-build:ci go test -v ./cmd/... ./internal/... ./pkg/...
 
       - name: Run linter
         run: |
-          docker run --rm polymarket-build:ci golangci-lint run ./...
+          docker run --rm prediction_markets-build:ci golangci-lint run ./...
 
       - name: Check formatting
         run: |
-          docker run --rm polymarket-build:ci sh -c '! (gofumpt -d . | grep "")'
+          docker run --rm prediction_markets-build:ci sh -c '! (gofumpt -d . | grep "")'
 
   build-production:
     name: Build Production Image
