@@ -12,14 +12,12 @@ platforms:
     ws_url: '${POLYMARKET_WS_URL}'
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
-    events: [${POLYMARKET_EVENTS}]
 
   kalshi:
     enabled: ${KALSHI_ENABLED}
     api_url: '${KALSHI_API_URL}'
     ws_url: '${KALSHI_WS_URL}'
     api_key: '${KALSHI_API_KEY}'
-    events: [${KALSHI_EVENTS}]
 
 # Redis configuration (for order book state and signals)
 redis:

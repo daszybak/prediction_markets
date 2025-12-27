@@ -44,7 +44,7 @@ func New(ctx context.Context, url string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Polymarket websocket responded: %v", resp.Status)
+	log.Printf("Connected successfully to Polymarket websocket. Polymarket websocket responded: %v", resp.Status)
 
 	c := &Client{
 		conn:     conn,

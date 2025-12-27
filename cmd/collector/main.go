@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/daszybak/prediction_markets/internal/polymarket/gamma"
+	"github.com/daszybak/prediction_markets/internal/polymarket/clob"
 	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
 	"go.yaml.in/yaml/v4"
 )
@@ -19,9 +18,6 @@ type config struct {
 			WebsocketURL string `yaml:"ws_url"`
 			GammaURL     string `yaml:"gamma_url"`
 			ClobURL      string `yaml:"clob_url"`
-			Events       []struct {
-				Slug string `yaml:"slug"`
-			} `yaml:"events"`
 		} `yaml:"polymarket"`
 	} `yaml:"platforms"`
 }
@@ -41,21 +37,12 @@ func main() {
 		log.Fatalf("Couldn't parse config: %v", err)
 	}
 
-	gammaClient := gamma.New(cfg.Platforms.PolyMarket.GammaURL)
+	clobClient := clob.New(cfg.Platforms.PolyMarket.ClobURL)
 
-	markets := make([]*gamma.Market, 0)
-	for _, m := range cfg.Platforms.PolyMarket.Events {
-		event := &gamma.Event{}
-		event, err = gammaClient.GetEventBySlug(m.Slug)
-		if err != nil {
-			log.Printf("Error fetching event %s: %v", m.Slug, err)
-			continue
-		}
-		markets = append(markets, event.Markets...)
+	markets, err := clobClient.GetAllMarkets()
+	if err != nil {
+		log.Printf("Couldn't get all markets: %v", err)
 	}
-
-	rawMarkets, _ := json.Marshal(markets)
-	log.Printf("markets: %s", rawMarkets)
 
 	ws, err := websocket.New(ctx, cfg.Platforms.PolyMarket.WebsocketURL+"/market")
 	if err != nil {
@@ -63,11 +50,11 @@ func main() {
 	}
 	defer ws.Close(ctx)
 
-	log.Println("Connected successfully")
-
-	tokenIDs := make([]string, 0, len(markets))
+	tokenIDs := make([]string, 0)
 	for _, m := range markets {
-		tokenIDs = append(tokenIDs, m.ClobTokenIDs...)
+		for _, t := range m.Tokens {
+			tokenIDs = append(tokenIDs, t.TokenID)
+		}
 	}
 
 	if err := ws.SubscribeMarket(ctx, tokenIDs, true, nil); err != nil {
