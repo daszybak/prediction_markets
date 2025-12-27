@@ -3,6 +3,7 @@ package websocket
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -120,9 +121,11 @@ func (c *Client) ReadMessage(ctx context.Context) ([]byte, error) {
 
 	select {
 	case <-ctx.Done():
-		c.conn.SetReadDeadline(time.Now())
+		if err = c.conn.SetReadDeadline(time.Now()); err != nil {
+			log.Printf("failed to set read deadline: %v", err)
+		}
 		<-done
-		return nil, ctx.Err()
+		return nil, fmt.Errorf("reading message: %w", ctx.Err())
 	case <-done:
 		log.Printf("message received: %s", msg)
 		return msg, err
