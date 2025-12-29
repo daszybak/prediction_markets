@@ -3,6 +3,7 @@ package clob
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -86,6 +87,7 @@ func (c *Client) GetAllMarkets() ([]*Market, error) {
 			nextCursor = page.NextCursor
 			continue
 		}
+		log.Println("received a market page")
 		break
 	}
 	return markets, nil

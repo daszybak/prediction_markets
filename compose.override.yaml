@@ -1,0 +1,33 @@
+# Development overrides - automatically loaded by docker compose
+services:
+  collector:
+    build:
+      target: dev
+    environment:
+      - SERVICE=collector
+    volumes:
+      - .:/app
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+  # arbiter:
+  #   build:
+  #     target: dev
+  #   environment:
+  #     - SERVICE=arbiter
+  #   volumes:
+  #     - .:/app
+  #     - go_mod_cache:/go/pkg/mod
+  #     - go_build_cache:/root/.cache/go-build
+
+  timescaledb:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+volumes:
+  go_mod_cache:
+  go_build_cache:

@@ -1,73 +1,98 @@
-tgt_dir := "target"
-src_dirs := "cmd internal pkg"
+default_service := "collector"
 
 # List available recipes.
 default:
     just --list
 
-# Build the main binary.
-build:
-    make build
+# ============================================================================
+# Development (delegates to make for Go commands)
+# ============================================================================
 
-# Run all tests.
-test pattern=".*":
-    go test -run '{{pattern}}' ./cmd/... ./internal/... ./pkg/...
+# Run a service locally.
+run service=default_service *args:
+    go run ./cmd/{{service}} {{args}}
 
-# Run tests with verbose output.
-test-v pattern=".*":
-    go test -v -run '{{pattern}}' ./cmd/... ./internal/... ./pkg/...
+# Delegate to make for build/test/lint.
+build *args:
+    make build {{args}}
 
-# Run benchmarks.
-bench pattern=".*":
-    go test -bench='{{pattern}}' -benchmem ./cmd/... ./internal/... ./pkg/...
+test *args:
+    make test {{args}}
 
-# Run all checks (style, lint, tests).
-check: check_style check_lint test
+check *args:
+    make check {{args}}
 
-# Check Go formatting.
-check_style:
-    @! (gofumpt -d {{src_dirs}} 2>/dev/null | grep '')
-    @! (goimports -d {{src_dirs}} 2>/dev/null | grep '')
-    @! (gofmt -s -d {{src_dirs}} 2>/dev/null | grep '')
-
-# Run linters.
-check_lint:
-    go vet ./...
-    golangci-lint run ./...
-
-# Format all Go files.
 fmt:
-    gofumpt -w .
-    goimports -w .
+    make fmt
 
-# Clean build artifacts.
 clean:
-    rm -rf {{tgt_dir}}
+    make clean
+    rm -rf tmp
 
-# Run the collector.
-run *args:
-    go run ./cmd/collector {{args}}
+# ============================================================================
+# Docker Compose
+# ============================================================================
 
-# Build the Docker build environment image.
-docker-build:
+# Start all services (dev mode with hot reload).
+up *args:
+    docker compose up {{args}}
+
+# Stop all services.
+down *args:
+    docker compose down {{args}}
+
+# View logs (use: just logs, just logs collector, just logs -f).
+logs *args:
+    docker compose logs {{args}}
+
+# Start only dependencies (db, redis) for local Go development.
+deps *args:
+    docker compose up -d timescaledb redis {{args}}
+
+# ============================================================================
+# Container execution
+# ============================================================================
+
+# Execute a command in a running service container.
+exec service=default_service +args:
+    docker compose exec {{service}} {{args}}
+
+# Open shell in service container.
+shell service=default_service:
+    docker compose exec {{service}} sh
+
+# ============================================================================
+# Database
+# ============================================================================
+
+# Connect to TimescaleDB.
+db:
+    docker compose exec timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB
+
+# Connect to Redis CLI.
+redis:
+    docker compose exec redis redis-cli
+
+# ============================================================================
+# Production
+# ============================================================================
+
+# Build production image for a service.
+image service=default_service:
+    docker build --build-arg SERVICE={{service}} --target runtime -t prediction_markets-{{service}}:latest .
+
+# Run production stack (no override file).
+prod *args:
+    docker compose -f compose.yaml up {{args}}
+
+# ============================================================================
+# CI (used by scripts/with_build_env.sh)
+# ============================================================================
+
+# Build the CI image.
+ci-image:
     docker build --target builder -t prediction_markets-build .
 
-# Run a command in the Docker build environment.
-docker-run *args:
+# Run command in CI container.
+ci *args:
     bash scripts/with_build_env.sh {{args}}
-
-# Run tests in Docker.
-docker-test:
-    bash scripts/with_build_env.sh make test
-
-# Run checks in Docker (for CI).
-docker-check:
-    bash scripts/with_build_env.sh make check
-
-# Open a shell in the Docker build environment.
-docker-shell:
-    bash scripts/with_build_env.sh bash
-
-# Build the production image.
-docker-build-prod:
-    docker build --target runtime -t prediction_markets:latest .

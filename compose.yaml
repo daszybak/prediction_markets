@@ -1,0 +1,75 @@
+services:
+  collector:
+    build:
+      context: .
+      target: runtime
+      args:
+        SERVICE: collector
+    environment:
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD:?required}@timescaledb:5432/${POSTGRES_DB:-prediction}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - prediction
+
+  # arbiter:
+  #   build:
+  #     context: .
+  #     target: runtime
+  #     args:
+  #       SERVICE: arbiter
+  #   environment:
+  #     - LOG_LEVEL=info
+  #     - DATABASE_URL=postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD:?required}@timescaledb:5432/${POSTGRES_DB:-prediction}?sslmode=disable
+  #     - REDIS_URL=redis://redis:6379/0
+  #   restart: unless-stopped
+  #   depends_on:
+  #     timescaledb:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - prediction
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-prediction}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:-prediction}
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prediction} -d ${POSTGRES_DB:-prediction}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - prediction
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - prediction
+
+networks:
+  prediction:
+
+volumes:
+  timescaledb_data:
+  redis_data:

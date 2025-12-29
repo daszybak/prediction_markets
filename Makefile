@@ -1,33 +1,34 @@
 tgt_dir := target
-pkg := github.com/daszybak/prediction_markets
 src_dirs := cmd internal pkg
 
 deps := $(shell find $(src_dirs) -name '*.go' -type f 2>/dev/null)
+services := collector
+# services := collector arbiter
 
-.PHONY: all build test test-v bench check check_style check_lint fmt clean
+.PHONY: all build test test-v bench check check_style check_lint fmt clean $(services)
 
 all: build
 
-# Build the collector binary.
-build: $(tgt_dir)/collector
+# Build all services.
+build: $(services)
 
-$(tgt_dir)/collector: $(deps) | $(tgt_dir)
-	( \
-		cd cmd/collector && \
-		CGO_ENABLED=0 go build -o '../../$@' \
-	)
+# Build individual service (e.g., make collector).
+$(services): %: $(tgt_dir)/%
+
+$(tgt_dir)/%: $(deps) | $(tgt_dir)
+	CGO_ENABLED=0 go build -o '$@' './cmd/$*'
 
 # Run all tests.
 test:
-	go test ./cmd/... ./internal/... ./pkg/...
+	go test ./...
 
 # Run tests with verbose output.
 test-v:
-	go test -v ./cmd/... ./internal/... ./pkg/...
+	go test -v ./...
 
 # Run benchmarks.
 bench:
-	go test -bench=. -benchmem ./cmd/... ./internal/... ./pkg/...
+	go test -bench=. -benchmem ./...
 
 # Run all checks.
 check: check_style check_lint test
@@ -36,7 +37,6 @@ check: check_style check_lint test
 check_style:
 	@! (gofumpt -d $(src_dirs) 2>/dev/null | grep '')
 	@! (goimports -d $(src_dirs) 2>/dev/null | grep '')
-	@! (gofmt -s -d $(src_dirs) 2>/dev/null | grep '')
 
 # Run linters.
 check_lint:

@@ -27,6 +27,15 @@ go.work
 # Config file with sensitive data
 config.yaml
 
+# Environment variables
+.env
+
+# Air hot reload tmp directory
+tmp/
+
+# Build target
+target/
+
 # OS generated files
 .DS_Store
 .DS_Store?

@@ -39,6 +39,9 @@ func main() {
 
 	clobClient := clob.New(cfg.Platforms.PolyMarket.ClobURL)
 
+	// NOTE We should retrieve the markets from cache and run a separate go routine which will
+	// scan for new markets across different prediction market platforms and match them together
+	// or find correlation.
 	markets, err := clobClient.GetAllMarkets()
 	if err != nil {
 		log.Printf("Couldn't get all markets: %v", err)
