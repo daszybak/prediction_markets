@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -23,13 +24,15 @@ type config struct {
 }
 
 func main() {
+	configPath := flag.String("config", "configs/collector/config.yaml", "path to config file")
+	flag.Parse()
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	// TODO The config path should be a parameter (argument) of the main function.
-	rawConfig, err := os.ReadFile("config.yaml")
+	rawConfig, err := os.ReadFile(*configPath)
 	if err != nil {
-		log.Fatalf("Couldn't read config: %v", err)
+		log.Fatalf("Couldn't read config %s: %v", *configPath, err)
 	}
 
 	cfg := &config{}

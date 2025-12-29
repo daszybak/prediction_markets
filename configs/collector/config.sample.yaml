@@ -1,9 +1,10 @@
-# Prediction Markets Configuration
+# Prediction Markets Collector Configuration
 #
-# Copy this file to config.yaml and replace placeholders with actual values.
-# You can use `envsubst` to replace variables:
+# For local development:
+#   Copy this file to config.yaml in the same directory and fill in values.
 #
-#     envsubst < config.sample.yaml > config.yaml
+# For production:
+#   The entrypoint.sh script runs envsubst automatically using environment variables.
 
 # Prediction market platforms
 platforms:

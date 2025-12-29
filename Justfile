@@ -10,7 +10,7 @@ default:
 
 # Run a service locally.
 run service=default_service *args:
-    go run ./cmd/{{service}} {{args}}
+    go run ./cmd/{{service}} -config=configs/{{service}}/config.yaml {{args}}
 
 # Delegate to make for build/test/lint.
 build *args:
@@ -54,7 +54,7 @@ deps *args:
 # ============================================================================
 
 # Execute a command in a running service container.
-exec service=default_service +args:
+exec service=default_service *args:
     docker compose exec {{service}} {{args}}
 
 # Open shell in service container.

@@ -5,10 +5,11 @@ services:
       target: runtime
       args:
         SERVICE: collector
+    env_file: .env
     environment:
-      - LOG_LEVEL=info
-      - DATABASE_URL=postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD:?required}@timescaledb:5432/${POSTGRES_DB:-prediction}?sslmode=disable
-      - REDIS_URL=redis://redis:6379/0
+      - SERVICE=collector
+      # Override redis host for container networking
+      - REDIS_HOST=redis
     restart: unless-stopped
     depends_on:
       timescaledb:

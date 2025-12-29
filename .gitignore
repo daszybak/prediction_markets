@@ -24,8 +24,9 @@ go.work
 .vscode/
 .idea/
 
-# Config file with sensitive data
+# Config files with sensitive data
 config.yaml
+configs/**/config.yaml
 
 # Environment variables
 .env
@@ -44,3 +45,7 @@ target/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+#claude
+./claude
+

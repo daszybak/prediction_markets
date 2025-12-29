@@ -42,12 +42,15 @@ RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /app/target/${SERVICE} ./cmd/${SE
 # Runtime stage (minimal image)
 FROM alpine:3.23 AS runtime
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates gettext
 
 WORKDIR /app
 
 ARG SERVICE=collector
 COPY --from=build /app/target/${SERVICE} /app/service
-COPY config.sample.yaml /app/config.yaml
+COPY configs/${SERVICE}/config.sample.yaml /app/configs/${SERVICE}/config.sample.yaml
+COPY scripts/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-ENTRYPOINT ["/app/service"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+CMD ["/app/service"]
