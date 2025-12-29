@@ -73,6 +73,26 @@ db:
 redis:
     docker compose exec redis redis-cli
 
+# Run all migrations.
+migrate:
+    @for f in db/migrations/*.up.sql; do \
+        echo "Running migration: $f"; \
+        docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/$f; \
+    done
+
+# Run a specific migration (e.g., just migrate-one 1_init).
+migrate-one name:
+    docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/db/migrations/{{name}}.up.sql
+
+# Rollback a specific migration (e.g., just migrate-down 1_init).
+migrate-down name:
+    docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/db/migrations/{{name}}.down.sql
+
+# Show migration status.
+migrate-status:
+    @echo "Applied migrations:"
+    @ls -1 db/migrations/*.up.sql | xargs -I {} basename {} .up.sql
+
 # ============================================================================
 # Production
 # ============================================================================
