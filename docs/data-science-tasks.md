@@ -2,29 +2,529 @@
 
 ## Project Overview
 
-This project collects real-time data from prediction markets (Polymarket, Kalshi, Coinbase, etc.) and stores it in TimescaleDB. The goal is to identify arbitrage opportunities and trading signals.
+This project collects real-time data from prediction markets (Polymarket, Kalshi, PredictIt, Metaculus, etc.) and stores it in TimescaleDB. The goal is to identify arbitrage opportunities, match equivalent markets across platforms, and correlate news/events with market movements.
 
 ## Architecture
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Polymarket    │     │     Kalshi      │     │    Coinbase     │
-│   WebSocket     │     │      API        │     │      API        │
-└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌────────────▼────────────┐
-                    │   Go Collector Service  │
-                    │   (real-time + cache)   │
-                    └────────────┬────────────┘
-                                 │
-              ┌──────────────────┼──────────────────┐
-              │                  │                  │
-     ┌────────▼────────┐  ┌──────▼──────┐  ┌───────▼───────┐
-     │   TimescaleDB   │  │    Redis    │  │  Your Python  │
-     │  (time-series)  │  │   (cache)   │  │   Analysis    │
-     └─────────────────┘  └─────────────┘  └───────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           DATA SOURCES                                        │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────────────────┤
+│ Polymarket  │   Kalshi    │  PredictIt  │  Metaculus  │   News Feeds        │
+│ (WebSocket) │   (API)     │   (API)     │   (API)     │  (RSS/APIs)         │
+└──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────────┬──────────┘
+       │             │             │             │                 │
+       └─────────────┴─────────────┼─────────────┴─────────────────┘
+                                   │
+                    ┌──────────────▼──────────────┐
+                    │    Go Collector Service     │
+                    │    (real-time + cache)      │
+                    └──────────────┬──────────────┘
+                                   │
+       ┌───────────────────────────┼───────────────────────────┐
+       │                           │                           │
+┌──────▼──────┐             ┌──────▼──────┐             ┌──────▼──────┐
+│ TimescaleDB │             │    Redis    │             │  pgvector   │
+│(time-series)│             │   (cache)   │             │ (embeddings)│
+└──────┬──────┘             └─────────────┘             └──────┬──────┘
+       │                                                       │
+       └───────────────────────┬───────────────────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   Python Analysis   │
+                    │  - Market matching  │
+                    │  - Signal detection │
+                    │  - Backtesting      │
+                    └─────────────────────┘
+```
+
+## Supported Platforms
+
+| Platform | Type | Data Available | Status |
+|----------|------|----------------|--------|
+| **Polymarket** | DeFi/Crypto | WebSocket orderbook, trades | Active |
+| **Kalshi** | US Regulated | REST API, orderbook | Active |
+| **PredictIt** | US Political | REST API | Planned |
+| **Metaculus** | Community/Scientific | REST API | Planned |
+| **Manifold** | Play Money | REST API | Planned |
+| **Betfair** | Sports/Politics | REST API | Planned |
+| **Augur** | Decentralized | Blockchain events | Planned |
+
+## Vector Database (pgvector)
+
+We use **pgvector** (PostgreSQL extension) for semantic search and market correlation:
+
+### Use Cases
+
+1. **Market Matching Across Platforms**
+   - Embed market questions using sentence transformers
+   - Find equivalent markets: "Will Bitcoin hit $100k?" ≈ "BTC >= $100,000 EOY"
+   - Enables cross-platform arbitrage detection
+
+2. **News → Market Correlation**
+   - Embed news headlines/articles
+   - Find which markets a news item affects
+   - Early signal detection before price moves
+
+3. **Similar Market Discovery**
+   - "Show me markets similar to X"
+   - Portfolio correlation analysis
+   - Risk clustering
+
+### Schema Extension
+
+```sql
+-- Enable pgvector
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Market embeddings for semantic search
+CREATE TABLE market_embeddings (
+    market_id TEXT PRIMARY KEY REFERENCES markets(id),
+    question_embedding vector(384),  -- sentence-transformers/all-MiniLM-L6-v2
+    description_embedding vector(384),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for fast similarity search
+CREATE INDEX ON market_embeddings
+USING ivfflat (question_embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- News articles and their embeddings
+CREATE TABLE news_articles (
+    id SERIAL PRIMARY KEY,
+    source TEXT NOT NULL,           -- reuters, bloomberg, twitter, etc.
+    url TEXT UNIQUE,
+    headline TEXT NOT NULL,
+    content TEXT,
+    published_at TIMESTAMPTZ NOT NULL,
+    headline_embedding vector(384),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX ON news_articles
+USING ivfflat (headline_embedding vector_cosine_ops)
+WITH (lists = 100);
+
+-- Link news to affected markets
+CREATE TABLE news_market_links (
+    news_id INT REFERENCES news_articles(id),
+    market_id TEXT REFERENCES markets(id),
+    similarity_score FLOAT,
+    PRIMARY KEY (news_id, market_id)
+);
+```
+
+### Example Queries
+
+```python
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Find similar markets
+def find_similar_markets(question: str, top_k: int = 5):
+    embedding = model.encode(question)
+
+    return pd.read_sql("""
+        SELECT m.*, me.question_embedding <=> %s::vector AS distance
+        FROM markets m
+        JOIN market_embeddings me ON m.id = me.market_id
+        ORDER BY distance
+        LIMIT %s
+    """, engine, params=[embedding.tolist(), top_k])
+
+# Match news to markets
+def find_affected_markets(headline: str, threshold: float = 0.3):
+    embedding = model.encode(headline)
+
+    return pd.read_sql("""
+        SELECT m.*, 1 - (me.question_embedding <=> %s::vector) AS similarity
+        FROM markets m
+        JOIN market_embeddings me ON m.id = me.market_id
+        WHERE 1 - (me.question_embedding <=> %s::vector) > %s
+        ORDER BY similarity DESC
+    """, engine, params=[embedding.tolist(), embedding.tolist(), threshold])
+```
+
+### Embedding Limitations
+
+**IMPORTANT**: Embeddings capture topic similarity, NOT sentiment/outcome:
+
+```python
+# DANGER: These have ~0.87 similarity but OPPOSITE meanings!
+a = "Trump wins the 2024 election"
+b = "Trump loses the 2024 election"
+```
+
+Use embeddings for candidate retrieval, then verify with LLM or rules.
+
+## Market Matching Strategy (Hybrid Approach)
+
+### Why Hybrid?
+
+| Method | Speed | Cost | Accuracy |
+|--------|-------|------|----------|
+| Embeddings only | <50ms | Free | 60-70% |
+| LLM only | 1-3s | $0.01-0.05/call | 90%+ |
+| **Hybrid** | <50ms after cache | One-time LLM cost | 90%+ |
+
+### Pipeline
+
+```
+New Market Appears on Platform B
+           │
+           ▼
+┌─────────────────────────────┐
+│  Stage 1: Embedding Filter  │  Fast, free
+│  Find top-5 candidates from │
+│  Platform A with sim > 0.6  │
+└─────────────┬───────────────┘
+              │ 5 candidates
+              ▼
+┌─────────────────────────────┐
+│  Stage 2: LLM Verification  │  One-time cost ~$0.02
+│  "Are these the same bet?"  │
+│  Returns: yes/no + confidence│
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Stage 3: Cache Forever     │  market_pairs table
+│  Never ask LLM again        │
+└─────────────────────────────┘
+```
+
+### Schema
+
+```sql
+-- Cached market pair mappings (LLM-verified)
+CREATE TABLE market_pairs (
+    market_id_a TEXT REFERENCES markets(id),
+    market_id_b TEXT REFERENCES markets(id),
+    is_equivalent BOOLEAN NOT NULL,
+    confidence FLOAT NOT NULL,
+    verified_by TEXT NOT NULL,        -- 'llm' | 'human' | 'embedding'
+    llm_reasoning TEXT,               -- Why LLM said yes/no
+    verified_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (market_id_a, market_id_b)
+);
+
+-- Index for fast lookups
+CREATE INDEX idx_market_pairs_equivalent
+ON market_pairs(market_id_a) WHERE is_equivalent = true;
+```
+
+### Implementation
+
+```python
+async def find_equivalent_market(new_market: Market) -> Optional[Market]:
+    """Find equivalent market across platforms, using cache."""
+
+    # 1. Check cache first
+    cached = await db.fetch_one("""
+        SELECT market_id_b, confidence
+        FROM market_pairs
+        WHERE market_id_a = $1 AND is_equivalent = true
+    """, new_market.id)
+
+    if cached:
+        return await get_market(cached.market_id_b)
+
+    # 2. Embedding similarity for candidates
+    embedding = model.encode(new_market.question)
+    candidates = await db.fetch_all("""
+        SELECT m.*, 1 - (me.question_embedding <=> $1::vector) as sim
+        FROM markets m
+        JOIN market_embeddings me ON m.id = me.market_id
+        WHERE m.platform != $2
+          AND 1 - (me.question_embedding <=> $1::vector) > 0.6
+        ORDER BY sim DESC
+        LIMIT 5
+    """, embedding.tolist(), new_market.platform)
+
+    if not candidates:
+        return None
+
+    # 3. LLM verification (one-time cost)
+    for candidate in candidates:
+        result = await llm_verify_match(new_market, candidate)
+
+        # Cache the result (positive or negative)
+        await db.execute("""
+            INSERT INTO market_pairs
+            (market_id_a, market_id_b, is_equivalent, confidence, verified_by, llm_reasoning)
+            VALUES ($1, $2, $3, $4, 'llm', $5)
+        """, new_market.id, candidate.id, result.is_match,
+             result.confidence, result.reasoning)
+
+        if result.is_match and result.confidence > 0.8:
+            return candidate
+
+    return None
+
+
+async def llm_verify_match(market_a: Market, market_b: Market) -> MatchResult:
+    """Use LLM to verify if two markets are equivalent."""
+
+    prompt = f"""
+    Are these two prediction markets asking about the SAME event/outcome?
+
+    Market A ({market_a.platform}):
+    Question: {market_a.question}
+    Resolution: {market_a.resolution_date}
+
+    Market B ({market_b.platform}):
+    Question: {market_b.question}
+    Resolution: {market_b.resolution_date}
+
+    Consider:
+    - Same underlying event?
+    - Same resolution criteria?
+    - Same time frame?
+
+    Respond in JSON:
+    {{
+        "is_match": true/false,
+        "confidence": 0.0-1.0,
+        "reasoning": "brief explanation"
+    }}
+    """
+
+    # Use cheap model (Haiku/GPT-4o-mini) - $0.01-0.02 per call
+    response = await llm.complete(prompt, model="claude-3-haiku")
+    return parse_match_result(response)
+```
+
+### Cost Analysis
+
+```
+Scenario: 1000 markets across 3 platforms
+
+Worst case (all unique):
+- 1000 markets × 5 LLM calls each = 5000 calls
+- 5000 × $0.01 = $50 one-time cost
+
+Typical case (50% have matches):
+- 500 markets find match on first try = 500 calls
+- 500 markets check all 5 candidates = 2500 calls
+- 3000 × $0.01 = $30 one-time cost
+
+After initial mapping:
+- New markets: ~10/day × $0.05 = $0.50/day
+- Cached lookups: FREE
+```
+
+## Signal Classification (When to Use LLM)
+
+Not all signals need expensive LLM verification. Use this decision tree:
+
+### High-Stakes Signal Detection
+
+```python
+def is_high_stakes(signal: Signal, portfolio: Portfolio) -> bool:
+    """Determine if signal warrants LLM verification."""
+
+    # 1. Position exposure - do you have skin in the game?
+    position = portfolio.get_position(signal.market_id)
+    if position and abs(position.value_usd) > 500:
+        return True
+
+    # 2. Arbitrage opportunity size
+    if signal.type == "arbitrage" and signal.potential_profit_usd > 100:
+        return True
+
+    # 3. Source quality (tier1 = Reuters, AP, Bloomberg, official gov)
+    if signal.source_tier == "tier1":
+        return True
+
+    # 4. Market liquidity - can you actually trade on this?
+    if signal.market_liquidity_usd < 1000:
+        return False  # Not worth the LLM cost
+
+    # 5. Cross-platform signal (same news affects multiple platforms)
+    if signal.affected_platforms >= 2:
+        return True
+
+    return False
+```
+
+### Signal Processing Pipeline
+
+```
+Incoming Signal (news, price move, etc.)
+              │
+              ▼
+┌─────────────────────────────┐
+│  is_high_stakes() check     │
+└─────────────┬───────────────┘
+              │
+       ┌──────┴──────┐
+       │             │
+    HIGH          LOW
+       │             │
+       ▼             ▼
+┌─────────────┐  ┌─────────────┐
+│ LLM Analysis│  │ Rules only  │
+│ - Direction │  │ - Log it    │
+│ - Confidence│  │ - Maybe alert│
+│ - Reasoning │  └─────────────┘
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────────────────┐
+│  Action Decision            │
+│  confidence > 0.7 → trade   │
+│  confidence > 0.5 → alert   │
+│  else → log only            │
+└─────────────────────────────┘
+```
+
+### LLM for News → Market Direction
+
+```python
+async def analyze_news_impact(news: str, market: Market) -> ImpactAnalysis:
+    """Use LLM to determine how news affects a market."""
+
+    prompt = f"""
+    News headline: "{news}"
+
+    Prediction market: "{market.question}"
+    Current YES price: ${market.yes_price:.2f} ({market.yes_price*100:.0f}% implied probability)
+
+    How does this news affect the market?
+
+    Respond in JSON:
+    {{
+        "relevant": true/false,
+        "direction": "YES_UP" | "YES_DOWN" | "NEUTRAL",
+        "magnitude": "small" | "medium" | "large",
+        "confidence": 0.0-1.0,
+        "reasoning": "brief explanation",
+        "suggested_fair_value": 0.0-1.0 or null
+    }}
+    """
+
+    response = await llm.complete(prompt, model="claude-3-haiku")
+    return parse_impact_analysis(response)
+
+
+# Example usage
+async def process_news_signal(news: NewsItem, portfolio: Portfolio):
+    # 1. Find affected markets via embedding similarity
+    affected_markets = await find_affected_markets(news.headline, threshold=0.4)
+
+    for market in affected_markets:
+        signal = Signal(
+            type="news",
+            market_id=market.id,
+            source_tier=news.source_tier,
+            market_liquidity_usd=market.daily_volume,
+            affected_platforms=len(affected_markets),
+        )
+
+        if is_high_stakes(signal, portfolio):
+            # Worth the LLM cost
+            impact = await analyze_news_impact(news.headline, market)
+
+            if impact.relevant and impact.confidence > 0.7:
+                await create_alert(
+                    market=market,
+                    news=news,
+                    direction=impact.direction,
+                    confidence=impact.confidence,
+                    reasoning=impact.reasoning,
+                )
+        else:
+            # Just log for later analysis
+            await log_signal(signal, news)
+```
+
+### Cost Control
+
+```python
+class LLMBudget:
+    """Track and limit LLM spending."""
+
+    def __init__(self, daily_limit_usd: float = 10.0):
+        self.daily_limit = daily_limit_usd
+        self.spent_today = 0.0
+        self.last_reset = datetime.now().date()
+
+    async def can_spend(self, estimated_cost: float) -> bool:
+        self._maybe_reset()
+
+        if self.spent_today + estimated_cost > self.daily_limit:
+            logger.warning(f"LLM budget exhausted: ${self.spent_today:.2f}/${self.daily_limit:.2f}")
+            return False
+        return True
+
+    async def record_spend(self, actual_cost: float):
+        self.spent_today += actual_cost
+
+    def _maybe_reset(self):
+        if datetime.now().date() > self.last_reset:
+            self.spent_today = 0.0
+            self.last_reset = datetime.now().date()
+
+
+# Usage
+budget = LLMBudget(daily_limit_usd=10.0)
+
+async def analyze_with_budget(news: str, market: Market):
+    cost_estimate = 0.02  # ~$0.02 per Haiku call
+
+    if not await budget.can_spend(cost_estimate):
+        return None  # Skip LLM, use rules only
+
+    result = await analyze_news_impact(news, market)
+    await budget.record_spend(cost_estimate)
+    return result
+```
+
+## News Feed Integration
+
+### Sources to Consider
+
+| Source | Type | Use Case |
+|--------|------|----------|
+| **Reuters/AP** | Wire services | Breaking news |
+| **Twitter/X** | Social | Fast signals, sentiment |
+| **Bloomberg** | Financial | Market-moving news |
+| **Official Gov Sources** | Primary | Election results, economic data |
+| **Reddit** | Social | Sentiment, early signals |
+| **Crypto Twitter** | Specialized | Crypto market signals |
+
+### News Processing Pipeline
+
+```
+Raw Feed → Dedup → Embed → Match Markets → Store → Alert
+              ↓
+         Rate limit &
+         source quality
+```
+
+```python
+# Pseudo-code for news processor
+async def process_news_item(article: NewsArticle):
+    # 1. Generate embedding
+    embedding = model.encode(article.headline)
+
+    # 2. Find affected markets
+    affected_markets = find_affected_markets(
+        embedding,
+        threshold=0.4
+    )
+
+    # 3. Store with links
+    article_id = store_article(article, embedding)
+    for market in affected_markets:
+        link_news_to_market(article_id, market.id, market.similarity)
+
+    # 4. Alert if high-impact
+    if len(affected_markets) > 0 and article.source_quality > 0.8:
+        await send_alert(article, affected_markets)
 ```
 
 ## Data Available
@@ -961,9 +1461,9 @@ def daily_calibration():
 
 ## Your Tasks
 
-### Phase 1: Market Correlation
+### Phase 1: Market Correlation (pgvector)
 
-**Goal**: Match equivalent markets across platforms.
+**Goal**: Match equivalent markets across platforms using semantic search.
 
 Example:
 - Polymarket: "Will Bitcoin hit $100k in 2025?"
@@ -971,15 +1471,32 @@ Example:
 
 These are the same market but worded differently.
 
-**Approach options**:
-1. **Embedding similarity**: Use sentence transformers to embed market questions, find clusters
-2. **LLM classification**: Use GPT/Claude to identify equivalent markets
-3. **Rule-based**: Date extraction + entity matching (faster, less accurate)
+**Approach** (using pgvector):
+1. Generate embeddings for all market questions using `sentence-transformers`
+2. Store in `market_embeddings` table
+3. Use cosine similarity to find matches across platforms
+4. Apply threshold + manual review for edge cases
 
 **Deliverable**: Python script/notebook that:
-- Connects to TimescaleDB
+- Connects to TimescaleDB + pgvector
+- Generates and stores embeddings for all markets
 - Groups equivalent markets across sources
-- Outputs mapping table: `(source_a, market_id_a, source_b, market_id_b, confidence)`
+- Outputs mapping table: `(source_a, market_id_a, source_b, market_id_b, similarity_score)`
+
+### Phase 1.5: News Feed Integration
+
+**Goal**: Collect news and correlate with markets for early signal detection.
+
+**Tasks**:
+1. Set up news collectors (RSS feeds, Twitter API, etc.)
+2. Generate embeddings for headlines
+3. Auto-link news to affected markets via similarity
+4. Build alerting pipeline for high-impact news
+
+**Deliverable**:
+- News collector service (Go or Python)
+- Migration for news tables (see schema above)
+- Dashboard/alerts for news → market correlations
 
 ### Phase 2: Signal Discovery
 
@@ -1051,28 +1568,51 @@ analysis/
 ### 1. Setup
 
 ```bash
-# Start database
+# Start database (includes TimescaleDB with pgvector)
 just deps
 
 # Create .env from sample
 cp .env.sample .env
 # Edit with your credentials
 
-# Install Python deps (create your requirements.txt)
+# Install Python deps
 pip install -r analysis/requirements.txt
 ```
 
-### 2. Connect to TimescaleDB
+**Required Python packages** (add to `analysis/requirements.txt`):
+```
+sqlalchemy>=2.0
+psycopg2-binary
+pandas
+numpy
+sentence-transformers  # for embeddings
+pgvector              # pgvector Python client
+```
+
+### 2. Enable pgvector
+
+```sql
+-- Run once after DB setup (or add to migrations)
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 3. Connect to TimescaleDB + pgvector
 
 ```python
 import os
 from sqlalchemy import create_engine
+from pgvector.sqlalchemy import Vector
 
 engine = create_engine(os.environ["DATABASE_URL"])
 # Or: postgresql://prediction:password@localhost:5432/prediction
+
+# Test pgvector
+with engine.connect() as conn:
+    result = conn.execute("SELECT '[1,2,3]'::vector")
+    print("pgvector working:", result.fetchone())
 ```
 
-### 3. Example Query
+### 4. Example Query
 
 ```python
 import pandas as pd

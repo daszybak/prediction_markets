@@ -1,4 +1,18 @@
 services:
+  migrate:
+    build:
+      context: .
+      target: migrate
+    env_file: .env
+    environment:
+      - POSTGRES_HOST=timescaledb
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - prediction
+    restart: "no"
+
   collector:
     build:
       context: .
@@ -8,12 +22,11 @@ services:
     env_file: .env
     environment:
       - SERVICE=collector
-      # Override redis host for container networking
       - REDIS_HOST=redis
     restart: unless-stopped
     depends_on:
-      timescaledb:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     networks:
@@ -39,7 +52,8 @@ services:
   #     - prediction
 
   timescaledb:
-    image: timescale/timescaledb:latest-pg17
+    # HA image includes pgvector, pg_stat_statements, and other useful extensions
+    image: timescale/timescaledb-ha:pg17
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-prediction}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}

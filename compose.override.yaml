@@ -1,14 +1,24 @@
 # Development overrides - automatically loaded by docker compose
 services:
+  migrate:
+    profiles:
+      - prod  # Skip migrate in dev, run manually if needed
+
   collector:
     build:
       target: dev
+    env_file: .env
     environment:
       - SERVICE=collector
     volumes:
       - .:/app
       - go_mod_cache:/go/pkg/mod
       - go_build_cache:/root/.cache/go-build
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # arbiter:
   #   build:

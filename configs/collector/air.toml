@@ -1,0 +1,17 @@
+root = "/app"
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/collector"
+  cmd = "go build -o ./tmp/collector ./cmd/collector"
+  delay = 1000
+  exclude_dir = ["tmp", "vendor", "node_modules", "target"]
+  exclude_regex = ["_test.go"]
+  include_ext = ["go", "yaml"]
+  kill_delay = "2s"
+
+[log]
+  time = false
+
+[misc]
+  clean_on_exit = true

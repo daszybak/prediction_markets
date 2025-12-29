@@ -73,25 +73,32 @@ db:
 redis:
     docker compose exec redis redis-cli
 
-# Run all migrations.
+# Database URL for migrations (local dev)
+db_url := "postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-prediction}?sslmode=disable"
+
+# Run all pending migrations.
 migrate:
-    @for f in db/migrations/*.up.sql; do \
-        echo "Running migration: $f"; \
-        docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/$f; \
-    done
+    migrate -path db/migrations -database "{{db_url}}" up
 
-# Run a specific migration (e.g., just migrate-one 1_init).
-migrate-one name:
-    docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/db/migrations/{{name}}.up.sql
+# Rollback last migration.
+migrate-down:
+    migrate -path db/migrations -database "{{db_url}}" down 1
 
-# Rollback a specific migration (e.g., just migrate-down 1_init).
-migrate-down name:
-    docker compose exec -T timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB -f /app/db/migrations/{{name}}.down.sql
+# Rollback all migrations.
+migrate-reset:
+    migrate -path db/migrations -database "{{db_url}}" down -all
 
-# Show migration status.
-migrate-status:
-    @echo "Applied migrations:"
-    @ls -1 db/migrations/*.up.sql | xargs -I {} basename {} .up.sql
+# Show migration version.
+migrate-version:
+    migrate -path db/migrations -database "{{db_url}}" version
+
+# Force set migration version (use with caution).
+migrate-force version:
+    migrate -path db/migrations -database "{{db_url}}" force {{version}}
+
+# Create new migration files.
+migrate-create name:
+    migrate create -ext sql -dir db/migrations -seq {{name}}
 
 # ============================================================================
 # Production
