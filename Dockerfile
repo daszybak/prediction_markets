@@ -31,11 +31,10 @@ RUN apk add --no-cache gettext
 RUN go install github.com/air-verse/air@latest
 RUN mkdir -p /app/tmp
 
-COPY scripts/entrypoint.dev.sh /app/entrypoint.dev.sh
-RUN chmod +x /app/entrypoint.dev.sh
-
+# Note: Volume mount .:/app will override /app, so entrypoint path
+# must match the local filesystem structure (scripts/entrypoint.dev.sh)
 ENV SERVICE=collector
-ENTRYPOINT ["/app/entrypoint.dev.sh"]
+ENTRYPOINT ["/app/scripts/entrypoint.dev.sh"]
 
 # Production build stage
 FROM builder AS build

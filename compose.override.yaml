@@ -1,9 +1,5 @@
 # Development overrides - automatically loaded by docker compose
 services:
-  migrate:
-    profiles:
-      - prod  # Skip migrate in dev, run manually if needed
-
   collector:
     build:
       target: dev
