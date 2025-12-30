@@ -33,9 +33,9 @@ clean:
 # Docker Compose
 # ============================================================================
 
-# Start all services (dev mode with hot reload).
+# Start dev environment with hot reload (rebuilds if Dockerfile changed)
 up *args:
-    docker compose up {{args}}
+    docker compose up --build {{args}}
 
 # Stop all services.
 down *args:
