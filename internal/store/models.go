@@ -5,6 +5,8 @@
 package store
 
 import (
+	"time"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 )
@@ -12,31 +14,29 @@ import (
 type Market struct {
 	ID          string             `json:"id"`
 	Platform    string             `json:"platform"`
-	Question    string             `json:"question"`
-	Description pgtype.Text        `json:"description"`
+	Description string             `json:"description"`
 	EndDate     pgtype.Timestamptz `json:"end_date"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
 type MarketEmbedding struct {
-	MarketID             string             `json:"market_id"`
-	QuestionEmbedding    pgvector.Vector    `json:"question_embedding"`
-	DescriptionEmbedding pgvector.Vector    `json:"description_embedding"`
-	ModelName            string             `json:"model_name"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+	MarketID             string          `json:"market_id"`
+	DescriptionEmbedding pgvector.Vector `json:"description_embedding"`
+	ModelName            string          `json:"model_name"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
 }
 
 type MarketPair struct {
-	MarketIDA    string             `json:"market_id_a"`
-	MarketIDB    string             `json:"market_id_b"`
-	IsEquivalent bool               `json:"is_equivalent"`
-	Confidence   float64            `json:"confidence"`
-	VerifiedBy   string             `json:"verified_by"`
-	LlmModel     pgtype.Text        `json:"llm_model"`
-	LlmReasoning pgtype.Text        `json:"llm_reasoning"`
-	VerifiedAt   pgtype.Timestamptz `json:"verified_at"`
+	MarketIDA    string      `json:"market_id_a"`
+	MarketIDB    string      `json:"market_id_b"`
+	IsEquivalent bool        `json:"is_equivalent"`
+	Confidence   float64     `json:"confidence"`
+	VerifiedBy   string      `json:"verified_by"`
+	LlmModel     pgtype.Text `json:"llm_model"`
+	LlmReasoning pgtype.Text `json:"llm_reasoning"`
+	VerifiedAt   time.Time   `json:"verified_at"`
 }
 
 type NewsArticle struct {
@@ -47,63 +47,63 @@ type NewsArticle struct {
 	Headline          string             `json:"headline"`
 	Content           pgtype.Text        `json:"content"`
 	HeadlineEmbedding pgvector.Vector    `json:"headline_embedding"`
-	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	PublishedAt       time.Time          `json:"published_at"`
 	ProcessedAt       pgtype.Timestamptz `json:"processed_at"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	CreatedAt         time.Time          `json:"created_at"`
 }
 
 type NewsMarketLink struct {
-	NewsID          int32              `json:"news_id"`
-	MarketID        string             `json:"market_id"`
-	SimilarityScore float64            `json:"similarity_score"`
-	LlmAnalyzed     bool               `json:"llm_analyzed"`
-	Direction       pgtype.Text        `json:"direction"`
-	ImpactMagnitude pgtype.Text        `json:"impact_magnitude"`
-	LlmConfidence   pgtype.Float8      `json:"llm_confidence"`
-	LlmReasoning    pgtype.Text        `json:"llm_reasoning"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	NewsID          int32         `json:"news_id"`
+	MarketID        string        `json:"market_id"`
+	SimilarityScore float64       `json:"similarity_score"`
+	LlmAnalyzed     bool          `json:"llm_analyzed"`
+	Direction       pgtype.Text   `json:"direction"`
+	ImpactMagnitude pgtype.Text   `json:"impact_magnitude"`
+	LlmConfidence   pgtype.Float8 `json:"llm_confidence"`
+	LlmReasoning    pgtype.Text   `json:"llm_reasoning"`
+	CreatedAt       time.Time     `json:"created_at"`
 }
 
 type OrderBookMetric struct {
-	Time       pgtype.Timestamptz `json:"time"`
-	TokenID    string             `json:"token_id"`
-	MidPrice   pgtype.Int8        `json:"mid_price"`
-	BestBid    pgtype.Int8        `json:"best_bid"`
-	BestAsk    pgtype.Int8        `json:"best_ask"`
-	Spread     pgtype.Int8        `json:"spread"`
-	SpreadBps  pgtype.Int2        `json:"spread_bps"`
-	BidDepth5  pgtype.Int8        `json:"bid_depth_5"`
-	AskDepth5  pgtype.Int8        `json:"ask_depth_5"`
-	BidDepth10 pgtype.Int8        `json:"bid_depth_10"`
-	AskDepth10 pgtype.Int8        `json:"ask_depth_10"`
-	Imbalance  pgtype.Int2        `json:"imbalance"`
+	Time       time.Time   `json:"time"`
+	TokenID    string      `json:"token_id"`
+	MidPrice   pgtype.Int8 `json:"mid_price"`
+	BestBid    pgtype.Int8 `json:"best_bid"`
+	BestAsk    pgtype.Int8 `json:"best_ask"`
+	Spread     pgtype.Int8 `json:"spread"`
+	SpreadBps  pgtype.Int2 `json:"spread_bps"`
+	BidDepth5  pgtype.Int8 `json:"bid_depth_5"`
+	AskDepth5  pgtype.Int8 `json:"ask_depth_5"`
+	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
+	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
+	Imbalance  pgtype.Int2 `json:"imbalance"`
 }
 
 type OrderBookSnapshot struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	Side    string             `json:"side"`
-	Level   int16              `json:"level"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
+	Time    time.Time `json:"time"`
+	TokenID string    `json:"token_id"`
+	Side    string    `json:"side"`
+	Level   int16     `json:"level"`
+	Price   int64     `json:"price"`
+	Size    int64     `json:"size"`
 }
 
 type Token struct {
-	ID              string             `json:"id"`
-	MarketID        string             `json:"market_id"`
-	Outcome         string             `json:"outcome"`
-	Winning         pgtype.Bool        `json:"winning"`
-	SettlementPrice pgtype.Int8        `json:"settlement_price"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	ID              string      `json:"id"`
+	MarketID        string      `json:"market_id"`
+	Outcome         string      `json:"outcome"`
+	Winning         pgtype.Bool `json:"winning"`
+	SettlementPrice pgtype.Int8 `json:"settlement_price"`
+	CreatedAt       time.Time   `json:"created_at"`
 }
 
 type Trade struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	TradeID pgtype.Text        `json:"trade_id"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
-	Side    string             `json:"side"`
-	Maker   pgtype.Text        `json:"maker"`
-	Taker   pgtype.Text        `json:"taker"`
+	Time    time.Time   `json:"time"`
+	TokenID string      `json:"token_id"`
+	TradeID pgtype.Text `json:"trade_id"`
+	Price   int64       `json:"price"`
+	Size    int64       `json:"size"`
+	Side    string      `json:"side"`
+	Maker   pgtype.Text `json:"maker"`
+	Taker   pgtype.Text `json:"taker"`
 }

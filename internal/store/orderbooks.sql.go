@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -79,9 +80,9 @@ ORDER BY time DESC
 `
 
 type GetOrderBookMetricsRangeParams struct {
-	TokenID string             `json:"token_id"`
-	Time    pgtype.Timestamptz `json:"time"`
-	Time_2  pgtype.Timestamptz `json:"time_2"`
+	TokenID string    `json:"token_id"`
+	Time    time.Time `json:"time"`
+	Time_2  time.Time `json:"time_2"`
 }
 
 func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBookMetricsRangeParams) ([]OrderBookMetric, error) {
@@ -126,18 +127,18 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 `
 
 type InsertOrderBookMetricsParams struct {
-	Time       pgtype.Timestamptz `json:"time"`
-	TokenID    string             `json:"token_id"`
-	MidPrice   pgtype.Int8        `json:"mid_price"`
-	BestBid    pgtype.Int8        `json:"best_bid"`
-	BestAsk    pgtype.Int8        `json:"best_ask"`
-	Spread     pgtype.Int8        `json:"spread"`
-	SpreadBps  pgtype.Int2        `json:"spread_bps"`
-	BidDepth5  pgtype.Int8        `json:"bid_depth_5"`
-	AskDepth5  pgtype.Int8        `json:"ask_depth_5"`
-	BidDepth10 pgtype.Int8        `json:"bid_depth_10"`
-	AskDepth10 pgtype.Int8        `json:"ask_depth_10"`
-	Imbalance  pgtype.Int2        `json:"imbalance"`
+	Time       time.Time   `json:"time"`
+	TokenID    string      `json:"token_id"`
+	MidPrice   pgtype.Int8 `json:"mid_price"`
+	BestBid    pgtype.Int8 `json:"best_bid"`
+	BestAsk    pgtype.Int8 `json:"best_ask"`
+	Spread     pgtype.Int8 `json:"spread"`
+	SpreadBps  pgtype.Int2 `json:"spread_bps"`
+	BidDepth5  pgtype.Int8 `json:"bid_depth_5"`
+	AskDepth5  pgtype.Int8 `json:"ask_depth_5"`
+	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
+	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
+	Imbalance  pgtype.Int2 `json:"imbalance"`
 }
 
 func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBookMetricsParams) error {
@@ -159,18 +160,18 @@ func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBoo
 }
 
 type InsertOrderBookMetricsBatchParams struct {
-	Time       pgtype.Timestamptz `json:"time"`
-	TokenID    string             `json:"token_id"`
-	MidPrice   pgtype.Int8        `json:"mid_price"`
-	BestBid    pgtype.Int8        `json:"best_bid"`
-	BestAsk    pgtype.Int8        `json:"best_ask"`
-	Spread     pgtype.Int8        `json:"spread"`
-	SpreadBps  pgtype.Int2        `json:"spread_bps"`
-	BidDepth5  pgtype.Int8        `json:"bid_depth_5"`
-	AskDepth5  pgtype.Int8        `json:"ask_depth_5"`
-	BidDepth10 pgtype.Int8        `json:"bid_depth_10"`
-	AskDepth10 pgtype.Int8        `json:"ask_depth_10"`
-	Imbalance  pgtype.Int2        `json:"imbalance"`
+	Time       time.Time   `json:"time"`
+	TokenID    string      `json:"token_id"`
+	MidPrice   pgtype.Int8 `json:"mid_price"`
+	BestBid    pgtype.Int8 `json:"best_bid"`
+	BestAsk    pgtype.Int8 `json:"best_ask"`
+	Spread     pgtype.Int8 `json:"spread"`
+	SpreadBps  pgtype.Int2 `json:"spread_bps"`
+	BidDepth5  pgtype.Int8 `json:"bid_depth_5"`
+	AskDepth5  pgtype.Int8 `json:"ask_depth_5"`
+	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
+	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
+	Imbalance  pgtype.Int2 `json:"imbalance"`
 }
 
 const insertOrderBookSnapshot = `-- name: InsertOrderBookSnapshot :exec
@@ -179,12 +180,12 @@ VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 type InsertOrderBookSnapshotParams struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	Side    string             `json:"side"`
-	Level   int16              `json:"level"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
+	Time    time.Time `json:"time"`
+	TokenID string    `json:"token_id"`
+	Side    string    `json:"side"`
+	Level   int16     `json:"level"`
+	Price   int64     `json:"price"`
+	Size    int64     `json:"size"`
 }
 
 func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBookSnapshotParams) error {
@@ -200,10 +201,10 @@ func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBo
 }
 
 type InsertOrderBookSnapshotBatchParams struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	Side    string             `json:"side"`
-	Level   int16              `json:"level"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
+	Time    time.Time `json:"time"`
+	TokenID string    `json:"token_id"`
+	Side    string    `json:"side"`
+	Level   int16     `json:"level"`
+	Price   int64     `json:"price"`
+	Size    int64     `json:"size"`
 }

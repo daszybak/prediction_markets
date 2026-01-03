@@ -17,5 +17,5 @@ until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -q;
 done
 
 echo "Running migrations..."
-migrate -path /app/db/migrations -database "$DATABASE_URL" up
+migrate -path /app/db/migrations -database "$DATABASE_URL" ${@:-up}
 echo "Migrations complete."

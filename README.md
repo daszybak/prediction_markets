@@ -7,7 +7,8 @@ High-frequency data collection and analysis for prediction market platforms.
 - Docker & Docker Compose
 - Go 1.25+ (for local development)
 - [just](https://github.com/casey/just) (command runner)
-- [golang-migrate](https://github.com/golang-migrate/migrate) (for local migrations)
+- [golang-migrate](https://github.com/golang-migrate/migrate) (for creating new migrations locally)
+- [sqlc](https://sqlc.dev/) (for generating Go code from SQL)
 
 ## Quick Start
 
@@ -84,11 +85,11 @@ just prod
 
 | Command | Description |
 |---------|-------------|
-| `just migrate` | Run all pending migrations |
-| `just migrate-down` | Rollback last migration |
-| `just migrate-reset` | Rollback all migrations |
-| `just migrate-version` | Show current migration version |
-| `just migrate-create name` | Create new migration files |
+| `just migrate` | Run all pending migrations (via container) |
+| `just migrate down 1` | Rollback last migration |
+| `just migrate down -all` | Rollback all migrations |
+| `just migrate version` | Show current migration version |
+| `just migrate-create name` | Create new migration files locally |
 
 ### Build & Test
 
@@ -98,6 +99,7 @@ just prod
 | `just test` | Run tests |
 | `just check` | Run linters |
 | `just fmt` | Format code |
+| `just sqlc` | Generate Go code from SQL queries |
 
 ### Production
 

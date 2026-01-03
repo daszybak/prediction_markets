@@ -70,8 +70,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't connect to database: %v", err)
 	}
-	db := store.New(pool)
-	defer db.Close()
+	_ = store.New(pool)
+	defer pool.Close()
 
 	log.Println("Connected to database")
 
@@ -106,7 +106,7 @@ func main() {
 	for {
 		msg, err := polymarketWebsocket.ReadMessage(ctx)
 		if err != nil {
-			log.Fatalf("Couldn't read message: %v", err)
+			log.Printf("Couldn't read message: %v", err)
 		}
 		log.Printf("message: %s", msg)
 	}

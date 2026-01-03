@@ -17,7 +17,7 @@ type Querier interface {
 	DeleteNewsArticle(ctx context.Context, id int32) error
 	DeleteNewsMarketLink(ctx context.Context, arg DeleteNewsMarketLinkParams) error
 	DeleteToken(ctx context.Context, id string) error
-	FindSimilarMarketsByQuestion(ctx context.Context, arg FindSimilarMarketsByQuestionParams) ([]FindSimilarMarketsByQuestionRow, error)
+	FindSimilarMarketsByDescription(ctx context.Context, arg FindSimilarMarketsByDescriptionParams) ([]FindSimilarMarketsByDescriptionRow, error)
 	FindSimilarNewsByHeadline(ctx context.Context, arg FindSimilarNewsByHeadlineParams) ([]FindSimilarNewsByHeadlineRow, error)
 	GetEquivalentMarkets(ctx context.Context, marketIDA string) ([]MarketPair, error)
 	GetLatestOrderBookMetrics(ctx context.Context, tokenID string) (OrderBookMetric, error)

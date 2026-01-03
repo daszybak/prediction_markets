@@ -44,6 +44,10 @@ check *args:
 fmt:
     make fmt
 
+# Generate Go code from SQL queries.
+sqlc:
+    sqlc generate
+
 # Clean build artifacts.
 clean:
     make clean
@@ -93,30 +97,11 @@ db:
 redis:
     docker compose exec redis redis-cli
 
-# Database URL for migrations (local dev)
-db_url := "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}"
+# Run migrations via container (e.g., just migrate, just migrate down 1, just migrate version).
+migrate *args='up':
+    docker compose run --rm migrate {{args}}
 
-# Run all pending migrations.
-migrate:
-    migrate -path db/migrations -database "{{db_url}}" up
-
-# Rollback last migration.
-migrate-down:
-    migrate -path db/migrations -database "{{db_url}}" down 1
-
-# Rollback all migrations.
-migrate-reset:
-    migrate -path db/migrations -database "{{db_url}}" down -all
-
-# Show migration version.
-migrate-version:
-    migrate -path db/migrations -database "{{db_url}}" version
-
-# Force set migration version (use with caution).
-migrate-force version:
-    migrate -path db/migrations -database "{{db_url}}" force {{version}}
-
-# Create new migration files.
+# Create new migration files locally.
 migrate-create name:
     migrate create -ext sql -dir db/migrations -seq {{name}}
 

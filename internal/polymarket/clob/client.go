@@ -4,7 +4,6 @@ package clob
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -79,18 +78,24 @@ func (c *Client) GetAllMarkets() ([]*Market, error) {
 	for {
 		page, err := c.GetMarkets(nextCursor)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't get markets for next cursor %s: %w", *nextCursor, err)
+			cursor := *nextCursor
+			if decoded, decodeErr := base64.StdEncoding.DecodeString(*nextCursor); decodeErr == nil {
+				cursor = string(decoded)
+			}
+			return markets, fmt.Errorf("couldn't get markets for cursor %s: %w", cursor, err)
 		}
 		markets = append(markets, page.Data...)
 		if page.NextCursor != nil {
 			nextCursor = page.NextCursor
-			decodedNextCursor, _ := base64.StdEncoding.DecodeString(*page.NextCursor)
+			decodedNextCursor, err := base64.StdEncoding.DecodeString(*page.NextCursor)
+			if err != nil {
+				return markets, fmt.Errorf("couldn't decode next cursor: %w", err)
+			}
 			if string(decodedNextCursor) == "-1" {
 				break
 			}
 			continue
 		}
-		log.Println("received a market page")
 		break
 	}
 	return markets, nil

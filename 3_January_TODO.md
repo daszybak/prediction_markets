@@ -167,6 +167,173 @@ Avoid re-fetching entire market list on restart.
 
 ---
 
+# Platform Interface Design
+
+## Where to Define
+
+```
+internal/
+  platform/
+    platform.go      # Interface definitions
+    polymarket.go    # Polymarket implementation
+    kalshi.go        # Kalshi implementation
+```
+
+Or keep platform-specific code separate:
+
+```
+internal/
+  platform/
+    platform.go      # Just the interfaces
+  polymarket/
+    polymarket.go    # Implements platform.Platform
+    clob/
+    websocket/
+  kalshi/
+    kalshi.go        # Implements platform.Platform
+    api/
+    websocket/
+```
+
+## Interface Definition
+
+```go
+// internal/platform/platform.go
+package platform
+
+import (
+    "context"
+    "github.com/daszybak/prediction_markets/internal/store"
+)
+
+// Market represents a normalized market across platforms
+type Market struct {
+    ID          string
+    Platform    string
+    Description string
+    EndDate     time.Time
+}
+
+type Token struct {
+    ID       string
+    Outcome  string
+    Price    float64
+}
+
+type OrderBookUpdate struct {
+    TokenID   string
+    Bids      []Level
+    Asks      []Level
+    Timestamp time.Time
+}
+
+type Level struct {
+    Price float64
+    Size  float64
+}
+
+// Platform defines the interface all prediction market platforms must implement
+type Platform interface {
+    // Lifecycle
+    Start(ctx context.Context) error
+    Stop(ctx context.Context) error
+    Health() HealthStatus
+
+    // Market data
+    GetMarkets(ctx context.Context, opts MarketFilterOpts) ([]*Market, error)
+    SyncMarkets(ctx context.Context) error  // Fetch and store to DB
+
+    // Real-time streaming
+    SubscribeOrderBook(ctx context.Context, tokens []string) (<-chan OrderBookUpdate, error)
+    SubscribeTrades(ctx context.Context, tokens []string) (<-chan Trade, error)
+}
+
+type MarketFilterOpts struct {
+    MaxMarkets   int
+    MinLiquidity float64
+    Categories   []string
+}
+
+type HealthStatus struct {
+    Healthy     bool
+    LastUpdate  time.Time
+    Connections int
+    Error       string
+}
+
+// Collector orchestrates multiple platforms
+type Collector struct {
+    platforms map[string]Platform
+    store     *store.Store
+    signals   SignalEmitter  // For Redis pub/sub
+}
+
+func (c *Collector) Start(ctx context.Context) error {
+    for name, p := range c.platforms {
+        if err := p.Start(ctx); err != nil {
+            return fmt.Errorf("start %s: %w", name, err)
+        }
+    }
+    // Start collection loops...
+    return nil
+}
+
+func (c *Collector) Stop(ctx context.Context) error {
+    var errs []error
+    for name, p := range c.platforms {
+        if err := p.Stop(ctx); err != nil {
+            errs = append(errs, fmt.Errorf("stop %s: %w", name, err))
+        }
+    }
+    return errors.Join(errs...)
+}
+```
+
+## Signal Emitter (Redis Integration)
+
+```go
+// internal/signal/emitter.go
+package signal
+
+type SignalType string
+
+const (
+    SignalWhale      SignalType = "whale"
+    SignalPriceDiff  SignalType = "price_diff"
+    SignalArbitrage  SignalType = "arbitrage"
+    SignalOrderBook  SignalType = "orderbook"
+)
+
+type Signal struct {
+    Type      SignalType
+    Platform  string
+    MarketID  string
+    TokenID   string
+    Data      map[string]any
+    Timestamp time.Time
+}
+
+type Emitter interface {
+    Emit(ctx context.Context, signal Signal) error
+}
+
+type Subscriber interface {
+    Subscribe(ctx context.Context, types ...SignalType) (<-chan Signal, error)
+}
+
+// Redis implementation
+type RedisEmitter struct {
+    client *redis.Client
+}
+
+func (e *RedisEmitter) Emit(ctx context.Context, s Signal) error {
+    data, _ := json.Marshal(s)
+    return e.client.Publish(ctx, "signals:"+string(s.Type), data).Err()
+}
+```
+
+---
+
 # Reference Patterns
 
 ## Graceful Shutdown Pattern

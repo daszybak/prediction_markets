@@ -4,16 +4,15 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Market embeddings for semantic similarity search
 CREATE TABLE IF NOT EXISTS market_embeddings (
     market_id               TEXT PRIMARY KEY REFERENCES markets(id) ON DELETE CASCADE,
-    question_embedding      vector(384),    -- sentence-transformers/all-MiniLM-L6-v2
-    description_embedding   vector(384),
+    description_embedding   vector(384),    -- sentence-transformers/all-MiniLM-L6-v2
     model_name              TEXT NOT NULL DEFAULT 'all-MiniLM-L6-v2',
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- HNSW index for fast similarity search (better than IVFFlat for <1M vectors)
-CREATE INDEX idx_market_embeddings_question
-ON market_embeddings USING hnsw (question_embedding vector_cosine_ops);
+CREATE INDEX idx_market_embeddings_description
+ON market_embeddings USING hnsw (description_embedding vector_cosine_ops);
 
 -- Cached market pair mappings (LLM-verified equivalence)
 CREATE TABLE IF NOT EXISTS market_pairs (

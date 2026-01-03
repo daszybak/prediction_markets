@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
@@ -111,13 +112,13 @@ RETURNING id
 `
 
 type InsertNewsArticleParams struct {
-	Source            string             `json:"source"`
-	SourceTier        string             `json:"source_tier"`
-	Url               pgtype.Text        `json:"url"`
-	Headline          string             `json:"headline"`
-	Content           pgtype.Text        `json:"content"`
-	HeadlineEmbedding pgvector.Vector    `json:"headline_embedding"`
-	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	Source            string          `json:"source"`
+	SourceTier        string          `json:"source_tier"`
+	Url               pgtype.Text     `json:"url"`
+	Headline          string          `json:"headline"`
+	Content           pgtype.Text     `json:"content"`
+	HeadlineEmbedding pgvector.Vector `json:"headline_embedding"`
+	PublishedAt       time.Time       `json:"published_at"`
 }
 
 func (q *Queries) InsertNewsArticle(ctx context.Context, arg InsertNewsArticleParams) (int32, error) {

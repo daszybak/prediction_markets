@@ -18,7 +18,7 @@ type DBTX interface {
 	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 }
 
-func newQueries(db DBTX) *Queries {
+func New(db DBTX) *Queries {
 	return &Queries{db: db}
 }
 

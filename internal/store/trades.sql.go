@@ -7,6 +7,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -79,9 +80,9 @@ ORDER BY time DESC
 `
 
 type GetTradesRangeParams struct {
-	TokenID string             `json:"token_id"`
-	Time    pgtype.Timestamptz `json:"time"`
-	Time_2  pgtype.Timestamptz `json:"time_2"`
+	TokenID string    `json:"token_id"`
+	Time    time.Time `json:"time"`
+	Time_2  time.Time `json:"time_2"`
 }
 
 func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) ([]Trade, error) {
@@ -119,14 +120,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 `
 
 type InsertTradeParams struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	TradeID pgtype.Text        `json:"trade_id"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
-	Side    string             `json:"side"`
-	Maker   pgtype.Text        `json:"maker"`
-	Taker   pgtype.Text        `json:"taker"`
+	Time    time.Time   `json:"time"`
+	TokenID string      `json:"token_id"`
+	TradeID pgtype.Text `json:"trade_id"`
+	Price   int64       `json:"price"`
+	Size    int64       `json:"size"`
+	Side    string      `json:"side"`
+	Maker   pgtype.Text `json:"maker"`
+	Taker   pgtype.Text `json:"taker"`
 }
 
 func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error {
@@ -144,12 +145,12 @@ func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error 
 }
 
 type InsertTradeBatchParams struct {
-	Time    pgtype.Timestamptz `json:"time"`
-	TokenID string             `json:"token_id"`
-	TradeID pgtype.Text        `json:"trade_id"`
-	Price   int64              `json:"price"`
-	Size    int64              `json:"size"`
-	Side    string             `json:"side"`
-	Maker   pgtype.Text        `json:"maker"`
-	Taker   pgtype.Text        `json:"taker"`
+	Time    time.Time   `json:"time"`
+	TokenID string      `json:"token_id"`
+	TradeID pgtype.Text `json:"trade_id"`
+	Price   int64       `json:"price"`
+	Size    int64       `json:"size"`
+	Side    string      `json:"side"`
+	Maker   pgtype.Text `json:"maker"`
+	Taker   pgtype.Text `json:"taker"`
 }

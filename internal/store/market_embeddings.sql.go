@@ -20,32 +20,32 @@ func (q *Queries) DeleteMarketEmbedding(ctx context.Context, marketID string) er
 	return err
 }
 
-const findSimilarMarketsByQuestion = `-- name: FindSimilarMarketsByQuestion :many
-SELECT market_id, question_embedding <=> $1 AS distance
+const findSimilarMarketsByDescription = `-- name: FindSimilarMarketsByDescription :many
+SELECT market_id, description_embedding <=> $1 AS distance
 FROM market_embeddings
 ORDER BY distance
 LIMIT $2
 `
 
-type FindSimilarMarketsByQuestionParams struct {
-	QuestionEmbedding pgvector.Vector `json:"question_embedding"`
-	Limit             int32           `json:"limit"`
+type FindSimilarMarketsByDescriptionParams struct {
+	DescriptionEmbedding pgvector.Vector `json:"description_embedding"`
+	Limit                int32           `json:"limit"`
 }
 
-type FindSimilarMarketsByQuestionRow struct {
+type FindSimilarMarketsByDescriptionRow struct {
 	MarketID string      `json:"market_id"`
 	Distance interface{} `json:"distance"`
 }
 
-func (q *Queries) FindSimilarMarketsByQuestion(ctx context.Context, arg FindSimilarMarketsByQuestionParams) ([]FindSimilarMarketsByQuestionRow, error) {
-	rows, err := q.db.Query(ctx, findSimilarMarketsByQuestion, arg.QuestionEmbedding, arg.Limit)
+func (q *Queries) FindSimilarMarketsByDescription(ctx context.Context, arg FindSimilarMarketsByDescriptionParams) ([]FindSimilarMarketsByDescriptionRow, error) {
+	rows, err := q.db.Query(ctx, findSimilarMarketsByDescription, arg.DescriptionEmbedding, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []FindSimilarMarketsByQuestionRow
+	var items []FindSimilarMarketsByDescriptionRow
 	for rows.Next() {
-		var i FindSimilarMarketsByQuestionRow
+		var i FindSimilarMarketsByDescriptionRow
 		if err := rows.Scan(&i.MarketID, &i.Distance); err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func (q *Queries) FindSimilarMarketsByQuestion(ctx context.Context, arg FindSimi
 }
 
 const getMarketEmbedding = `-- name: GetMarketEmbedding :one
-SELECT market_id, question_embedding, description_embedding, model_name, created_at, updated_at FROM market_embeddings WHERE market_id = $1
+SELECT market_id, description_embedding, model_name, created_at, updated_at FROM market_embeddings WHERE market_id = $1
 `
 
 func (q *Queries) GetMarketEmbedding(ctx context.Context, marketID string) (MarketEmbedding, error) {
@@ -66,7 +66,6 @@ func (q *Queries) GetMarketEmbedding(ctx context.Context, marketID string) (Mark
 	var i MarketEmbedding
 	err := row.Scan(
 		&i.MarketID,
-		&i.QuestionEmbedding,
 		&i.DescriptionEmbedding,
 		&i.ModelName,
 		&i.CreatedAt,
@@ -76,10 +75,9 @@ func (q *Queries) GetMarketEmbedding(ctx context.Context, marketID string) (Mark
 }
 
 const upsertMarketEmbedding = `-- name: UpsertMarketEmbedding :exec
-INSERT INTO market_embeddings (market_id, question_embedding, description_embedding, model_name, created_at, updated_at)
-VALUES ($1, $2, $3, $4, NOW(), NOW())
+INSERT INTO market_embeddings (market_id, description_embedding, model_name)
+VALUES ($1, $2, $3)
 ON CONFLICT (market_id) DO UPDATE SET
-    question_embedding = EXCLUDED.question_embedding,
     description_embedding = EXCLUDED.description_embedding,
     model_name = EXCLUDED.model_name,
     updated_at = NOW()
@@ -87,17 +85,11 @@ ON CONFLICT (market_id) DO UPDATE SET
 
 type UpsertMarketEmbeddingParams struct {
 	MarketID             string          `json:"market_id"`
-	QuestionEmbedding    pgvector.Vector `json:"question_embedding"`
 	DescriptionEmbedding pgvector.Vector `json:"description_embedding"`
 	ModelName            string          `json:"model_name"`
 }
 
 func (q *Queries) UpsertMarketEmbedding(ctx context.Context, arg UpsertMarketEmbeddingParams) error {
-	_, err := q.db.Exec(ctx, upsertMarketEmbedding,
-		arg.MarketID,
-		arg.QuestionEmbedding,
-		arg.DescriptionEmbedding,
-		arg.ModelName,
-	)
+	_, err := q.db.Exec(ctx, upsertMarketEmbedding, arg.MarketID, arg.DescriptionEmbedding, arg.ModelName)
 	return err
 }
