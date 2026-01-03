@@ -2,13 +2,14 @@
 package clob
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/daszybak/prediction_markets/internal/polymarket/price"
 	"github.com/daszybak/prediction_markets/pkg/httpclient"
+	"github.com/daszybak/prediction_markets/internal/price"
 )
 
 type Client struct {
@@ -24,24 +25,24 @@ func New(baseURL string) *Client {
 }
 
 type MarketToken struct {
-	Outcome string                    `json:"outcome"`
-	Price   polymarketprice.Price     `json:"price"`
-	TokenID string                    `json:"token_id"`
-	Winner  bool                      `json:"winner"`
+	Outcome string `json:"outcome"`
+	Price   price.Price  `json:"price"`
+	TokenID string `json:"token_id"`
+	Winner  bool   `json:"winner"`
 }
 
-type Market struct{
-	ConditionID string `json:"condition_id"`
-	Description string `json:"description"`
-	Question    string `json:"question"`
+type Market struct {
+	ConditionID string        `json:"condition_id"`
+	Description string        `json:"description"`
+	Question    string        `json:"question"`
 	Tokens      []MarketToken `json:"tokens"`
 }
 
 type MarketPage struct {
-	Limit int       `json:"limit"`
-	Count int       `json:"count"`
-	Data  []*Market `json:"data"`
-	NextCursor *string `json:"next_cursor,omitempty"`
+	Limit      int       `json:"limit"`
+	Count      int       `json:"count"`
+	Data       []*Market `json:"data"`
+	NextCursor *string   `json:"next_cursor,omitempty"`
 }
 
 func (c *Client) GetMarketByConditionID(conditionID string) (*Market, error) {
@@ -52,11 +53,10 @@ func (c *Client) GetMarketByConditionID(conditionID string) (*Market, error) {
 	return market, nil
 }
 
-
 func (c *Client) GetMarkets(nextCursor *string) (*MarketPage, error) {
 	endpoint := "/markets"
 	if nextCursor != nil {
-		endpoint += "?next_cursor="+*nextCursor
+		endpoint += "?next_cursor=" + *nextCursor
 	}
 	markets, err := httpclient.GetResource[*MarketPage](c.httpClient, c.baseURL, endpoint, []int{200})
 	if err != nil {
@@ -64,7 +64,6 @@ func (c *Client) GetMarkets(nextCursor *string) (*MarketPage, error) {
 	}
 	return markets, nil
 }
-
 
 func (c *Client) GetAllMarkets() ([]*Market, error) {
 	markets := []*Market{}
@@ -83,8 +82,12 @@ func (c *Client) GetAllMarkets() ([]*Market, error) {
 			return nil, fmt.Errorf("couldn't get markets for next cursor %s: %w", *nextCursor, err)
 		}
 		markets = append(markets, page.Data...)
-		if page.NextCursor != nil && *page.NextCursor != *nextCursor {
+		if page.NextCursor != nil {
 			nextCursor = page.NextCursor
+			decodedNextCursor, _ := base64.StdEncoding.DecodeString(*page.NextCursor)
+			if string(decodedNextCursor) == "-1" {
+				break
+			}
 			continue
 		}
 		log.Println("received a market page")
@@ -92,4 +95,3 @@ func (c *Client) GetAllMarkets() ([]*Market, error) {
 	}
 	return markets, nil
 }
-

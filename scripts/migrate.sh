@@ -1,15 +1,18 @@
 #!/bin/sh
 set -eu
 
-DB_HOST="${POSTGRES_HOST:-timescaledb}"
-DB_USER="${POSTGRES_USER:-prediction}"
-DB_NAME="${POSTGRES_DB:-prediction}"
-DB_PASS="${POSTGRES_PASSWORD:-}"
+# Required environment variables (no defaults - fail fast if missing)
+: "${POSTGRES_HOST:?POSTGRES_HOST is required}"
+: "${POSTGRES_PORT:?POSTGRES_PORT is required}"
+: "${POSTGRES_USER:?POSTGRES_USER is required}"
+: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+: "${POSTGRES_DB:?POSTGRES_DB is required}"
+: "${POSTGRES_SSLMODE:?POSTGRES_SSLMODE is required}"
 
-DATABASE_URL="postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/${DB_NAME}?sslmode=disable"
+DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}"
 
 echo "Waiting for database..."
-until pg_isready -h "$DB_HOST" -U "$DB_USER" -q; do
+until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -q; do
     sleep 1
 done
 

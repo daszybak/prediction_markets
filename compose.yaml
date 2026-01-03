@@ -22,8 +22,10 @@ services:
     env_file: .env
     environment:
       - SERVICE=collector
+      - POSTGRES_HOST=timescaledb
       - REDIS_HOST=redis
     restart: unless-stopped
+    # TODO: Add healthcheck once HTTP health endpoint is implemented in the service
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -55,13 +57,13 @@ services:
     # HA image includes pgvector, pg_stat_statements, and other useful extensions
     image: timescale/timescaledb-ha:pg17
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-prediction}
+      POSTGRES_USER: ${POSTGRES_USER:?required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
-      POSTGRES_DB: ${POSTGRES_DB:-prediction}
+      POSTGRES_DB: ${POSTGRES_DB:?required}
     volumes:
       - timescaledb_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-prediction} -d ${POSTGRES_DB:-prediction}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5

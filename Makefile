@@ -5,7 +5,7 @@ deps := $(shell find $(src_dirs) -name '*.go' -type f 2>/dev/null)
 services := collector
 # services := collector arbiter
 
-.PHONY: all build test test-v bench check check_style check_lint fmt clean $(services)
+.PHONY: all build test test-v bench check check_style check_lint fmt clean sqlc $(services)
 
 all: build
 
@@ -53,6 +53,12 @@ fmt:
 # Clean build artifacts.
 clean:
 	rm -rf $(tgt_dir)
+
+# Generate sqlc code.
+sqlc:
+	sqlc generate
+	@# Rename generated New -> newQueries so store.New returns *Store
+	sed -i '' 's/^func New/func newQueries/' internal/store/db.go
 
 $(tgt_dir):
 	mkdir -p '$@'

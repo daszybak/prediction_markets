@@ -6,25 +6,33 @@
 # For production:
 #   The entrypoint.sh script runs envsubst automatically using environment variables.
 
+# Database configuration (PostgreSQL/TimescaleDB)
+database:
+  host: '${POSTGRES_HOST}'
+  port: ${POSTGRES_PORT}
+  user: '${POSTGRES_USER}'
+  password: '${POSTGRES_PASSWORD}'
+  database: '${POSTGRES_DB}'
+  pool_size: ${POSTGRES_POOL_SIZE}
+  ssl_mode: '${POSTGRES_SSLMODE}'
+
 # Prediction market platforms
 platforms:
   polymarket:
-    enabled: ${POLYMARKET_ENABLED}
     ws_url: '${POLYMARKET_WS_URL}'
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
 
   kalshi:
-    enabled: ${KALSHI_ENABLED}
     api_url: '${KALSHI_API_URL}'
     ws_url: '${KALSHI_WS_URL}'
-    api_key: '${KALSHI_API_KEY}'
+    api_key_id: '${KALSHI_API_KEY_ID}'
+    api_private_key: '${KALSHI_API_PRIVATE_KEY}'  # base64-encoded PEM RSA private key
 
 # Redis configuration (for order book state and signals)
 redis:
   host: '${REDIS_HOST}'
   port: ${REDIS_PORT}
-  password: '${REDIS_PASSWORD}'
   db: ${REDIS_DB}
 
 # Trading configuration

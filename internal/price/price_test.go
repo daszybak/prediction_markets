@@ -1,4 +1,4 @@
-package polymarketprice
+package price
 
 import (
 	"encoding/json"

@@ -2,7 +2,7 @@ root = "/app"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./tmp/collector"
+  full_bin = "./tmp/collector"
   cmd = "go build -o ./tmp/collector ./cmd/collector"
   delay = 1000
   exclude_dir = ["tmp", "vendor", "node_modules", "target"]

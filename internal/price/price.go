@@ -1,6 +1,6 @@
-// Package polymarketprice is used to handle price values
-// coming from the polymarket API without losing precision.
-package polymarketprice
+// Package price handles price values from prediction market APIs
+// without losing precision.
+package price
 
 import (
 	"encoding/json"

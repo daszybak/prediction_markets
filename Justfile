@@ -4,6 +4,22 @@ default_service := "collector"
 default:
     just --list
 
+# Generate all configs from .env using config.sample.yaml templates.
+config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f .env ]]; then
+        echo "Error: .env file not found"
+        exit 1
+    fi
+    set -a && source .env && set +a
+    for sample in configs/*/config.sample.yaml; do
+        dir=$(dirname "$sample")
+        output="$dir/config.yaml"
+        envsubst < "$sample" > "$output"
+        echo "Generated $output"
+    done
+
 # ============================================================================
 # Development (delegates to make for Go commands)
 # ============================================================================
@@ -12,19 +28,23 @@ default:
 run service=default_service *args:
     go run ./cmd/{{service}} -config=configs/{{service}}/config.yaml {{args}}
 
-# Delegate to make for build/test/lint.
+# Build Go binaries.
 build *args:
     make build {{args}}
 
+# Run tests.
 test *args:
     make test {{args}}
 
+# Run linters.
 check *args:
     make check {{args}}
 
+# Format code.
 fmt:
     make fmt
 
+# Clean build artifacts.
 clean:
     make clean
     rm -rf tmp
@@ -74,7 +94,7 @@ redis:
     docker compose exec redis redis-cli
 
 # Database URL for migrations (local dev)
-db_url := "postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-prediction}?sslmode=disable"
+db_url := "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=${POSTGRES_SSLMODE}"
 
 # Run all pending migrations.
 migrate:
