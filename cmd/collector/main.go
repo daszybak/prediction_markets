@@ -70,7 +70,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't connect to database: %v", err)
 	}
-	_ = store.New(pool)
+	_ = store.NewStore(pool)
 	defer pool.Close()
 
 	log.Println("Connected to database")

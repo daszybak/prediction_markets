@@ -13,8 +13,8 @@ type Store struct {
 	pool *pgxpool.Pool
 }
 
-// New creates a new Store with the given connection pool.
-func New(pool *pgxpool.Pool) *Store {
+// NewStore creates a new Store with the given connection pool.
+func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{
 		Queries: newQueries(pool),
 		pool:    pool,

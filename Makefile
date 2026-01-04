@@ -57,8 +57,6 @@ clean:
 # Generate sqlc code.
 sqlc:
 	sqlc generate
-	@# Rename generated New -> newQueries so store.New returns *Store
-	sed -i '' 's/^func New/func newQueries/' internal/store/db.go
 
 $(tgt_dir):
 	mkdir -p '$@'
