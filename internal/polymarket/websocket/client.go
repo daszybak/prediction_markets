@@ -109,25 +109,30 @@ func (c *Client) SubscribeMarket(ctx context.Context, tokenIDs []string, initial
 	return c.conn.WriteJSON(sub)
 }
 
+type result struct {
+	Message	[]byte
+	Error   error
+}
+
 func (c *Client) ReadMessage(ctx context.Context) ([]byte, error) {
-	done := make(chan struct{})
-	var msg []byte
-	var err error
+	resultCh := make(chan result, 1)
 
 	go func() {
-		_, msg, err = c.conn.ReadMessage()
-		close(done)
+		_, msg, err := c.conn.ReadMessage()
+		resultCh <- result{
+			Message: msg,
+			Error:   err,
+		}
 	}()
 
 	select {
 	case <-ctx.Done():
-		if err = c.conn.SetReadDeadline(time.Now()); err != nil {
+		if err := c.conn.SetReadDeadline(time.Now()); err != nil {
 			log.Printf("failed to set read deadline: %v", err)
 		}
-		<-done
 		return nil, fmt.Errorf("reading message: %w", ctx.Err())
-	case <-done:
-		log.Printf("message received: %s", msg)
-		return msg, err
+	case msg := <-resultCh:
+		log.Printf("message received: %s", msg.Message)
+		return msg.Message, msg.Error
 	}
 }
