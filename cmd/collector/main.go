@@ -5,58 +5,25 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"os/signal"
 	"syscall"
 
-	configtypes "github.com/daszybak/prediction_markets/internal/config"
 	"github.com/daszybak/prediction_markets/internal/polymarket/clob"
 	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
 	"github.com/daszybak/prediction_markets/internal/store"
-	"go.yaml.in/yaml/v4"
 )
-
-type config struct {
-	Database struct {
-		Host     string `yaml:"host"`
-		Port     int    `yaml:"port"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		Database string `yaml:"database"`
-		PoolSize int    `yaml:"pool_size"`
-		SSLMode  string `yaml:"ssl_mode"`
-	} `yaml:"database"`
-	Platforms struct {
-		PolyMarket struct {
-			WebsocketURL string `yaml:"ws_url"`
-			GammaURL     string `yaml:"gamma_url"`
-			ClobURL      string `yaml:"clob_url"`
-		} `yaml:"polymarket"`
-		Kalshi struct {
-			APIURL        string                    `yaml:"api_url"`
-			WSURL         string                    `yaml:"ws_url"`
-			APIKeyID      string                    `yaml:"api_key_id"`
-			APIPrivateKey configtypes.RSAPrivateKey `yaml:"api_private_key"`
-		} `yaml:"kalshi"`
-	} `yaml:"platforms"`
-}
 
 func main() {
 	configPath := flag.String("config", "configs/collector/config.yaml", "path to config file")
 	flag.Parse()
 
+	cfg, err := readConfig(configPath)
+	if err != nil {
+		log.Fatalf("Couldn't read config: %v", err)
+	}
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-
-	rawConfig, err := os.ReadFile(*configPath)
-	if err != nil {
-		log.Fatalf("Couldn't read config %s: %v", *configPath, err)
-	}
-
-	cfg := &config{}
-	if err = yaml.Unmarshal(rawConfig, cfg); err != nil {
-		log.Fatalf("Couldn't parse config: %v", err)
-	}
 
 	pool, err := store.NewPool(ctx, store.PoolConfig{
 		Host:     cfg.Database.Host,
