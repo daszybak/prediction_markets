@@ -98,9 +98,6 @@ func validateConfig(cfg *config) error {
 	if cfg.Platforms.Kalshi.APIKeyID == "" {
 		return fmt.Errorf("platforms.kalshi.api_key_id is required")
 	}
-	if cfg.Platforms.Kalshi.APIPrivateKey == nil {
-		return fmt.Errorf("platforms.kalshi.api_private_key is required")
-	}
 
 	return nil
 }
