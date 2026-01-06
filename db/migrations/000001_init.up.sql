@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS tokens (
     outcome             TEXT NOT NULL,      -- 'YES', 'NO', or custom outcome
     winning             BOOLEAN,            -- NULL until resolved, then TRUE/FALSE
     settlement_price    BIGINT,             -- 0 or 1000000 (scale 10^6)
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(market_id, outcome)
 );
-
-CREATE INDEX idx_tokens_market_id ON tokens(market_id);

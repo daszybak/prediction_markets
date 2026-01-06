@@ -97,7 +97,14 @@ db:
 redis:
     docker compose exec redis redis-cli
 
-# Run migrations via container (e.g., just migrate, just migrate down 1, just migrate version).
+# Run migrations via container.
+# Examples:
+#   just migrate              - apply all pending migrations
+#   just migrate down 1       - rollback last migration
+#   just migrate down -all    - rollback all migrations
+#   just migrate drop -f      - drop everything (tables, indexes, all data)
+#   just migrate version      - show current migration version
+#   just migrate force 1      - force set version (fix dirty state)
 migrate *args='up':
     docker compose run --rm migrate {{args}}
 

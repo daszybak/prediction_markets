@@ -55,7 +55,8 @@ COPY db/migrations /app/db/migrations
 COPY scripts/migrate.sh /app/migrate.sh
 RUN chmod +x /app/migrate.sh
 
-CMD ["/app/migrate.sh"]
+ENTRYPOINT ["/app/migrate.sh"]
+CMD ["up"]
 
 # Runtime stage (minimal image)
 FROM alpine:3.23 AS runtime
