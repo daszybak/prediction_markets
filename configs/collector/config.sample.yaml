@@ -6,6 +6,9 @@
 # For production:
 #   The entrypoint.sh script runs envsubst automatically using environment variables.
 
+# Log level: debug, info, warn, error (default: info)
+log_level: '${LOG_LEVEL}'
+
 # Database configuration (PostgreSQL/TimescaleDB)
 database:
   host: '${POSTGRES_HOST}'
@@ -22,6 +25,7 @@ platforms:
     ws_url: '${POLYMARKET_WS_URL}'
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
+    market_sync_interval: '${POLYMARKET_CLOB_URL}'
 
   kalshi:
     api_url: '${KALSHI_API_URL}'
@@ -58,7 +62,3 @@ trading:
     min_edge: ${MIN_ARBITRAGE_EDGE}
     max_slippage: ${MAX_SLIPPAGE}
 
-# Logging
-logging:
-  level: '${LOG_LEVEL}'
-  format: '${LOG_FORMAT}'

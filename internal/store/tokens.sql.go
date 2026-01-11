@@ -38,6 +38,32 @@ func (q *Queries) GetToken(ctx context.Context, id string) (Token, error) {
 	return i, err
 }
 
+const getTokenIDsForPlatform = `-- name: GetTokenIDsForPlatform :many
+SELECT t.id FROM tokens t
+JOIN markets m ON t.market_id = m.id
+WHERE m.platform = $1
+`
+
+func (q *Queries) GetTokenIDsForPlatform(ctx context.Context, platform string) ([]string, error) {
+	rows, err := q.db.Query(ctx, getTokenIDsForPlatform, platform)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTokensByMarket = `-- name: GetTokensByMarket :many
 SELECT id, market_id, outcome, winning, settlement_price, created_at FROM tokens WHERE market_id = $1 ORDER BY outcome
 `

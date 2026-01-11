@@ -88,7 +88,9 @@ just prod
 | `just migrate` | Run all pending migrations (via container) |
 | `just migrate down 1` | Rollback last migration |
 | `just migrate down -all` | Rollback all migrations |
+| `just migrate drop -f` | Drop everything (tables, data) |
 | `just migrate version` | Show current migration version |
+| `just migrate force N` | Force set version (fix dirty state) |
 | `just migrate-create name` | Create new migration files locally |
 
 ### Build & Test
@@ -202,8 +204,8 @@ See `.env.sample` for all available variables.
 
 | Platform | Type | Status |
 |----------|------|--------|
-| Polymarket | DeFi/Crypto | Active |
-| Kalshi | US Regulated | Active |
+| Polymarket | DeFi/Crypto | Implemented (WS + REST) |
+| Kalshi | US Regulated | Planned |
 | PredictIt | US Political | Planned |
 | Metaculus | Community | Planned |
 | Manifold | Play Money | Planned |

@@ -35,6 +35,7 @@ type Market struct {
 	Description string        `json:"description"`
 	Question    string        `json:"question"`
 	Tokens      []MarketToken `json:"tokens"`
+	EndDateISO  string        `json:"end_date_iso"`
 }
 
 type MarketPage struct {

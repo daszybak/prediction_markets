@@ -17,3 +17,8 @@ UPDATE tokens SET winning = $2, settlement_price = $3 WHERE id = $1;
 
 -- name: DeleteToken :exec
 DELETE FROM tokens WHERE id = $1;
+
+-- name: GetTokenIDsForPlatform :many
+SELECT t.id FROM tokens t
+JOIN markets m ON t.market_id = m.id
+WHERE m.platform = $1;

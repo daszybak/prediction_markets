@@ -33,6 +33,7 @@ type Querier interface {
 	GetNewsMarketLink(ctx context.Context, arg GetNewsMarketLinkParams) (NewsMarketLink, error)
 	GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBookMetricsRangeParams) ([]OrderBookMetric, error)
 	GetToken(ctx context.Context, id string) (Token, error)
+	GetTokenIDsForPlatform(ctx context.Context, platform string) ([]string, error)
 	GetTokensByMarket(ctx context.Context, marketID string) ([]Token, error)
 	GetTradeByID(ctx context.Context, tradeID pgtype.Text) (Trade, error)
 	GetTradesByToken(ctx context.Context, arg GetTradesByTokenParams) ([]Trade, error)

@@ -3,15 +3,21 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"log"
+	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/daszybak/prediction_markets/internal/polymarket/clob"
-	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
+	"github.com/daszybak/prediction_markets/internal/platform"
+	"github.com/daszybak/prediction_markets/internal/polymarket"
 	"github.com/daszybak/prediction_markets/internal/store"
 )
+
+type collector struct {
+	platforms map[string]platform.Platform
+	store     *store.Store
+	logger    *slog.Logger
+}
 
 func main() {
 	configPath := flag.String("config", "configs/collector/config.yaml", "path to config file")
@@ -19,12 +25,29 @@ func main() {
 
 	cfg, err := readConfig(configPath)
 	if err != nil {
-		log.Fatalf("Couldn't read config: %v", err)
+		slog.Error("couldn't read config", "error", err)
+		os.Exit(1)
 	}
+
+	var logLevel slog.Level
+	if cfg.LogLevel != "" {
+		if err := logLevel.UnmarshalText([]byte(cfg.LogLevel)); err != nil {
+			slog.Error("invalid log_level", "value", cfg.LogLevel, "error", err)
+			os.Exit(1)
+		}
+	}
+
+	collector := &collector{
+		platforms: make(map[string]platform.Platform),
+	}
+	collector.logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	dbLogger := collector.logger.With("component", "database")
 	pool, err := store.NewPool(ctx, store.PoolConfig{
 		Host:     cfg.Database.Host,
 		Port:     cfg.Database.Port,
@@ -35,46 +58,25 @@ func main() {
 		SSLMode:  cfg.Database.SSLMode,
 	})
 	if err != nil {
-		log.Fatalf("Couldn't connect to database: %v", err)
+		dbLogger.Error("couldn't connect to database", "error", err)
+		os.Exit(1)
 	}
-	_ = store.NewStore(pool)
 	defer pool.Close()
+	dbLogger.Info("connected to database")
 
-	log.Println("Connected to database")
+	collector.store = store.NewStore(pool)
 
-	polymarketClobClient := clob.New(cfg.Platforms.PolyMarket.ClobURL)
+	polymarketLogger := collector.logger.With("component", "polymarket")
+	collector.platforms["polymarket"] = polymarket.New(polymarket.Config{
+		ClobURL:      cfg.Platforms.PolyMarket.ClobURL,
+		GammaURL:     cfg.Platforms.PolyMarket.GammaURL,
+		WebsocketURL: cfg.Platforms.PolyMarket.WebsocketURL,
+		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),
+	}, collector.store, polymarketLogger)
 
-	// NOTE We should retrieve the markets from cache and run a separate go routine which will
-	// scan for new markets across different prediction market platforms and match them together
-	// or find correlation.
-	markets, err := polymarketClobClient.GetAllMarkets()
-	if err != nil {
-		log.Printf("Couldn't get all markets: %v", err)
-	}
-
-	polymarketWebsocket, err := websocket.New(ctx, cfg.Platforms.PolyMarket.WebsocketURL+"/market")
-	if err != nil {
-		log.Fatalf("Couldn't open websocket connection: %v", err)
-	}
-	defer polymarketWebsocket.Close(ctx)
-
-	tokenIDs := make([]string, 0)
-	for _, m := range markets {
-		for _, t := range m.Tokens {
-			tokenIDs = append(tokenIDs, t.TokenID)
+	for platformName, platform := range collector.platforms {
+		err = platform.Start(ctx); if err != nil {
+			collector.logger.Error("starting platform", "plaftorm", platformName, "error", err)
 		}
-	}
-
-	fmt.Printf("token ids: %s", tokenIDs)
-	if err := polymarketWebsocket.SubscribeMarket(ctx, tokenIDs, true, nil); err != nil {
-		log.Fatalf("Couldn't send subscription: %v", err)
-	}
-
-	for {
-		msg, err := polymarketWebsocket.ReadMessage(ctx)
-		if err != nil {
-			log.Printf("Couldn't read message: %v", err)
-		}
-		log.Printf("message: %s", msg)
 	}
 }

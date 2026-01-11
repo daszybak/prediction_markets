@@ -1,6 +1,12 @@
 #!/bin/sh
 set -eu
 
+# Development entrypoint for hot-reload with Air.
+#
+# Unlike entrypoint.sh (production), this only generates config.yaml if it
+# doesn't exist. This allows developers to manually edit config.yaml without
+# it being overwritten on each container restart.
+
 # Required environment variables
 : "${SERVICE:?SERVICE is required}"
 : "${POSTGRES_HOST:?POSTGRES_HOST is required}"

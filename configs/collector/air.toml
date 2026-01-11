@@ -1,9 +1,9 @@
 root = "/app"
-tmp_dir = "tmp"
+tmp_dir = "target"
 
 [build]
-  full_bin = "./tmp/collector"
-  cmd = "go build -o ./tmp/collector ./cmd/collector"
+  full_bin = "./target/artfs/collector"
+  cmd = "go build -o ./target/artfs/collector ./cmd/collector"
   delay = 1000
   exclude_dir = ["tmp", "vendor", "node_modules", "target"]
   exclude_regex = ["_test.go"]

@@ -10,6 +10,7 @@ import (
 
 
 type config struct {
+	LogLevel string `yaml:"log_level"` // debug, info, warn, error
 	Database struct {
 		Host     string `yaml:"host"`
 		Port     int    `yaml:"port"`
@@ -24,6 +25,7 @@ type config struct {
 			WebsocketURL string `yaml:"ws_url"`
 			GammaURL     string `yaml:"gamma_url"`
 			ClobURL      string `yaml:"clob_url"`
+			MarketSyncInterval configtypes.Duration `yaml:"market_sync_interval"`
 		} `yaml:"polymarket"`
 		Kalshi struct {
 			APIURL        string                    `yaml:"api_url"`
