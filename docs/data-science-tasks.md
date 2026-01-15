@@ -50,6 +50,20 @@ This project collects real-time data from prediction markets (Polymarket, Kalshi
 | **Betfair** | Sports/Politics | REST API | Planned |
 | **Augur** | Decentralized | Blockchain events | Planned |
 
+## Related Projects
+
+Before building, check these existing projects for inspiration:
+
+| Project | Description | Relevant For |
+|---------|-------------|--------------|
+| [Polymarket/agents](https://github.com/Polymarket/agents) | Official AI agents with Chroma vectorization | News vectorization, market metadata |
+| [PredictOS](https://github.com/PredictionXBT/PredictOS) | Opensource prediction market framework | Architecture patterns |
+| [awesome-prediction-markets](https://github.com/0xperp/awesome-prediction-markets) | Curated list of tools | Discovery |
+| [Awesome-Prediction-Market-Tools](https://github.com/aarora4/Awesome-Prediction-Market-Tools) | AI agents, analytics, APIs | Tool ecosystem |
+| [polymarket-kalshi-arbitrage-bot](https://github.com/terauss/Polymarket-Kalshi-Arbitrage-bot) | Cross-platform arbitrage | Smart matching implementation |
+
+**Key insight from Polymarket/agents**: They use Chroma for vectorizing news sources and have a `GammaMarketClient` for fetching market metadata - similar to our approach but with a different vector DB.
+
 ## Vector Database (pgvector)
 
 We use **pgvector** (PostgreSQL extension) for semantic search and market correlation:
@@ -80,15 +94,14 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Market embeddings for semantic search
 CREATE TABLE market_embeddings (
     market_id TEXT PRIMARY KEY REFERENCES markets(id),
-    question_embedding vector(384),  -- sentence-transformers/all-MiniLM-L6-v2
-    description_embedding vector(384),
+    description_embedding vector(384),  -- sentence-transformers/all-MiniLM-L6-v2
+    model_name TEXT NOT NULL DEFAULT 'all-MiniLM-L6-v2',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for fast similarity search
+-- HNSW index for fast similarity search (better than IVFFlat for <1M vectors)
 CREATE INDEX ON market_embeddings
-USING ivfflat (question_embedding vector_cosine_ops)
-WITH (lists = 100);
+USING hnsw (description_embedding vector_cosine_ops);
 
 -- News articles and their embeddings
 CREATE TABLE news_articles (
@@ -103,8 +116,7 @@ CREATE TABLE news_articles (
 );
 
 CREATE INDEX ON news_articles
-USING ivfflat (headline_embedding vector_cosine_ops)
-WITH (lists = 100);
+USING hnsw (headline_embedding vector_cosine_ops);
 
 -- Link news to affected markets
 CREATE TABLE news_market_links (
@@ -128,7 +140,7 @@ def find_similar_markets(question: str, top_k: int = 5):
     embedding = model.encode(question)
 
     return pd.read_sql("""
-        SELECT m.*, me.question_embedding <=> %s::vector AS distance
+        SELECT m.*, me.description_embedding <=> %s::vector AS distance
         FROM markets m
         JOIN market_embeddings me ON m.id = me.market_id
         ORDER BY distance
@@ -140,10 +152,10 @@ def find_affected_markets(headline: str, threshold: float = 0.3):
     embedding = model.encode(headline)
 
     return pd.read_sql("""
-        SELECT m.*, 1 - (me.question_embedding <=> %s::vector) AS similarity
+        SELECT m.*, 1 - (me.description_embedding <=> %s::vector) AS similarity
         FROM markets m
         JOIN market_embeddings me ON m.id = me.market_id
-        WHERE 1 - (me.question_embedding <=> %s::vector) > %s
+        WHERE 1 - (me.description_embedding <=> %s::vector) > %s
         ORDER BY similarity DESC
     """, engine, params=[embedding.tolist(), embedding.tolist(), threshold])
 ```
@@ -161,6 +173,21 @@ b = "Trump loses the 2024 election"
 Use embeddings for candidate retrieval, then verify with LLM or rules.
 
 ## Market Matching Strategy (Hybrid Approach)
+
+### The Core Problem
+
+Market rules correlation has two distinct dimensions:
+
+| Dimension | What It Means | Example |
+|-----------|---------------|---------|
+| **Semantic similarity** | Topics/entities match | "Will Bitcoin exceed $100k?" ≈ "BTC price above 100000 USD?" |
+| **Resolution equivalence** | Same outcome under ALL scenarios | Same event + same criteria + same timeframe + same source |
+
+**Critical insight**: Embeddings excel at semantic similarity but struggle with resolution equivalence because subtle rule differences can change outcomes:
+- "Bitcoin > $100k on Dec 31, 2025 at 23:59 UTC"
+- "Bitcoin > $100k anytime in December 2025"
+
+These embed ~95% similarly but resolve differently.
 
 ### Why Hybrid?
 
@@ -235,11 +262,11 @@ async def find_equivalent_market(new_market: Market) -> Optional[Market]:
     # 2. Embedding similarity for candidates
     embedding = model.encode(new_market.question)
     candidates = await db.fetch_all("""
-        SELECT m.*, 1 - (me.question_embedding <=> $1::vector) as sim
+        SELECT m.*, 1 - (me.description_embedding <=> $1::vector) as sim
         FROM markets m
         JOIN market_embeddings me ON m.id = me.market_id
         WHERE m.platform != $2
-          AND 1 - (me.question_embedding <=> $1::vector) > 0.6
+          AND 1 - (me.description_embedding <=> $1::vector) > 0.6
         ORDER BY sim DESC
         LIMIT 5
     """, embedding.tolist(), new_market.platform)
@@ -315,6 +342,191 @@ After initial mapping:
 - New markets: ~10/day × $0.05 = $0.50/day
 - Cached lookups: FREE
 ```
+
+---
+
+## Advanced Market Correlation Approaches
+
+### Approach 1: Embedding Model Selection
+
+Current setup uses `all-MiniLM-L6-v2` (384 dims). Consider these alternatives:
+
+| Model | Dims | Speed | Quality | Notes |
+|-------|------|-------|---------|-------|
+| `all-MiniLM-L6-v2` | 384 | ⚡ Fast | Good | Current choice, good baseline |
+| `all-mpnet-base-v2` | 768 | Medium | Better | Better semantic understanding |
+| `BAAI/bge-small-en-v1.5` | 384 | ⚡ Fast | Better | State-of-art for size, drop-in replacement |
+| `nomic-embed-text-v1.5` | 768 | Medium | Excellent | Best open-source quality |
+| `text-embedding-3-small` | 1536 | API | Excellent | OpenAI, $0.02/1M tokens |
+
+**Recommendation**: Upgrade to `BAAI/bge-small-en-v1.5` - same dimensions, better quality, free.
+
+### Approach 2: Structured Extraction + Embedding (Recommended)
+
+Extract structured fields BEFORE embedding to normalize the representation:
+
+```
+┌──────────────────┐     ┌─────────────────────┐     ┌──────────────────┐
+│ Raw Market Rules │────▶│ Rule Parser/LLM     │────▶│ Structured Data  │
+└──────────────────┘     └─────────────────────┘     └──────────────────┘
+                                                              │
+                    ┌─────────────────────────────────────────┤
+                    ▼                                         ▼
+          ┌──────────────────┐                     ┌──────────────────┐
+          │ Canonical Text   │                     │ Field Matching   │
+          │ Embedding        │                     │ (Exact/Fuzzy)    │
+          └──────────────────┘                     └──────────────────┘
+```
+
+**Structured extraction schema:**
+
+```go
+type ParsedMarketRules struct {
+    Subject          string    `json:"subject"`           // "Bitcoin", "Trump", "S&P 500"
+    Metric           string    `json:"metric"`            // "price", "election outcome", "index value"
+    Condition        string    `json:"condition"`         // ">", "<", "=", "between"
+    Threshold        string    `json:"threshold"`         // "100000", "win", "4500-4600"
+    ResolutionTime   time.Time `json:"resolution_time"`   // Exact resolution timestamp
+    ResolutionSource string    `json:"resolution_source"` // "CoinGecko", "AP", "official results"
+    Outcomes         []string  `json:"outcomes"`          // ["YES", "NO"] or custom
+}
+```
+
+**SQL schema extension:**
+
+```sql
+ALTER TABLE markets ADD COLUMN parsed_rules JSONB;
+CREATE INDEX idx_markets_parsed_rules ON markets USING gin(parsed_rules);
+
+-- Example queries:
+-- Find all Bitcoin markets
+SELECT * FROM markets WHERE parsed_rules->>'subject' = 'Bitcoin';
+
+-- Find markets resolving in same hour
+SELECT * FROM markets
+WHERE parsed_rules->>'resolution_time' BETWEEN $1 AND $2;
+```
+
+**Why this works better:**
+1. **Exact field matching**: Two markets with identical `Subject + Metric + Threshold + ResolutionTime` are likely equivalent
+2. **Embedding on canonical form**: "Bitcoin price exceeds $100,000 by 2025-12-31" embeds more consistently
+3. **Confidence scoring**: Combine field match score + embedding similarity
+
+### Approach 3: Fine-tuned Domain Embedding (Best Long-term)
+
+Train a domain-specific embedding model on your verified market pairs:
+
+```python
+from sentence_transformers import SentenceTransformer, InputExample, losses
+from torch.utils.data import DataLoader
+
+# Load verified market pairs from database
+# SELECT * FROM market_pairs WHERE verified_by IN ('human', 'llm') AND confidence > 0.9
+
+train_examples = [
+    # Positive pairs (equivalent markets)
+    InputExample(texts=[market_a_rules, market_b_rules], label=1.0),
+    # Negative pairs (different markets)
+    InputExample(texts=[market_a_rules, market_c_rules], label=0.0),
+]
+
+model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=16)
+train_loss = losses.CosineSimilarityLoss(model)
+
+model.fit(
+    train_objectives=[(train_dataloader, train_loss)],
+    epochs=10,
+    warmup_steps=100,
+    output_path='models/market-embeddings-v1'
+)
+```
+
+**Requirements**: ~500-1000 verified market pairs from `market_pairs` table.
+
+### Approach 4: Small LLM Selection for Verification
+
+For the LLM verification stage, these models provide best cost/quality:
+
+| Model | Type | Latency | Quality | Cost | Best For |
+|-------|------|---------|---------|------|----------|
+| `Qwen2.5-3B-Instruct` | Local | 50-200ms | Good | Free | High volume, local deployment |
+| `Phi-3-mini-4k` | Local | 50-200ms | Good | Free | Resource constrained |
+| `Llama-3.2-3B-Instruct` | Local | 50-200ms | Good | Free | General purpose |
+| `claude-3-haiku` | API | 200-500ms | Excellent | $0.25/1M in | Production quality |
+| `gpt-4o-mini` | API | 200-500ms | Excellent | $0.15/1M in | Production quality |
+| `gemini-1.5-flash` | API | 100-300ms | Good | $0.075/1M in | Cheapest API |
+
+**Recommendation for your use case:**
+- **Development/Testing**: Local Qwen2.5-3B via Ollama
+- **Production**: claude-3-haiku or gpt-4o-mini
+- **High volume production**: Self-hosted Qwen2.5-7B on GPU
+
+### Recommended 4-Stage Pipeline
+
+```
+                              ┌─────────────────────────────────┐
+                              │     New Market Ingested         │
+                              └─────────────────┬───────────────┘
+                                                │
+                                                ▼
+                         ┌───────────────────────────────────────────┐
+                         │  Stage 1: Structured Extraction           │
+                         │  - Small LLM or regex patterns            │
+                         │  - Extract: subject, metric, threshold,   │
+                         │    resolution_time, source                │
+                         │  - Generate canonical description         │
+                         │  Cost: ~$0.001/market or free (local)     │
+                         └─────────────────────┬─────────────────────┘
+                                               │
+                                               ▼
+                         ┌───────────────────────────────────────────┐
+                         │  Stage 2: Candidate Generation            │
+                         │  - Embed canonical description            │
+                         │  - pgvector similarity search             │
+                         │  - Return top-20 candidates               │
+                         │  Cost: Free, Latency: <50ms               │
+                         └─────────────────────┬─────────────────────┘
+                                               │
+                                               ▼
+                         ┌───────────────────────────────────────────┐
+                         │  Stage 3: Field Matching (Fast Filter)    │
+                         │  - Exact match: resolution_time ±1 hour   │
+                         │  - Fuzzy match: subject similarity >0.9   │
+                         │  - Reduce to top-5 candidates             │
+                         │  Cost: Free, Latency: <10ms               │
+                         └─────────────────────┬─────────────────────┘
+                                               │
+                                               ▼
+                         ┌───────────────────────────────────────────┐
+                         │  Stage 4: LLM Verification (Precision)    │
+                         │  - Full rules comparison                  │
+                         │  - Edge case analysis                     │
+                         │  - Output: equivalent, confidence, reason │
+                         │  Cost: ~$0.01/comparison                  │
+                         └─────────────────────┬─────────────────────┘
+                                               │
+                                               ▼
+                         ┌───────────────────────────────────────────┐
+                         │  Stage 5: Store & Feedback                │
+                         │  - Cache in market_pairs table            │
+                         │  - Use for fine-tuning embeddings         │
+                         └───────────────────────────────────────────┘
+```
+
+### When to Skip LLM Verification
+
+Pure embedding + field matching is sufficient when:
+- Markets have identical `end_date` (within hours)
+- Subject extraction matches exactly (same ticker/entity)
+- Embedding similarity > 0.95
+- You only need recall (finding candidates), not precision
+
+Use LLM verification when:
+- Cross-platform matching (Kalshi ↔ Polymarket rules differ in format)
+- Embedding similarity between 0.7-0.95 (uncertain zone)
+- High-stakes decisions (arbitrage opportunities > $100)
+- Building training data for fine-tuned embeddings
 
 ## Signal Classification (When to Use LLM)
 

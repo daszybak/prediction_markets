@@ -8,7 +8,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-
 type config struct {
 	LogLevel string `yaml:"log_level"` // debug, info, warn, error
 	Database struct {
@@ -22,9 +21,9 @@ type config struct {
 	} `yaml:"database"`
 	Platforms struct {
 		PolyMarket struct {
-			WebsocketURL string `yaml:"ws_url"`
-			GammaURL     string `yaml:"gamma_url"`
-			ClobURL      string `yaml:"clob_url"`
+			WebsocketURL       string               `yaml:"ws_url"`
+			GammaURL           string               `yaml:"gamma_url"`
+			ClobURL            string               `yaml:"clob_url"`
 			MarketSyncInterval configtypes.Duration `yaml:"market_sync_interval"`
 		} `yaml:"polymarket"`
 		Kalshi struct {

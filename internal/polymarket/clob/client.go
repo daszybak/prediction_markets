@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/daszybak/prediction_markets/pkg/httpclient"
 	"github.com/daszybak/prediction_markets/internal/price"
+	"github.com/daszybak/prediction_markets/pkg/httpclient"
 )
 
 type Client struct {
@@ -24,10 +24,10 @@ func New(baseURL string) *Client {
 }
 
 type MarketToken struct {
-	Outcome string `json:"outcome"`
-	Price   price.Price  `json:"price"`
-	TokenID string `json:"token_id"`
-	Winner  bool   `json:"winner"`
+	Outcome string      `json:"outcome"`
+	Price   price.Price `json:"price"`
+	TokenID string      `json:"token_id"`
+	Winner  bool        `json:"winner"`
 }
 
 type Market struct {

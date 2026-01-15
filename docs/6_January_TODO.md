@@ -33,7 +33,7 @@ Current implementation:
 
 **TODOs in code:**
 - [ ] Fetch `end_date` from gamma API (clob doesn't have it)
-- [ ] Start goroutine to periodically sync markets (`syncLoop`)
+- [x] Start goroutine to periodically sync markets (`syncLoop`)
 - [ ] Process incoming messages (update order book, record trades)
 - [ ] Reconnection logic with backoff
 
@@ -42,9 +42,9 @@ Current implementation:
 ## High Priority
 
 - [ ] Message processing - parse websocket messages and store order book/trades
-- [ ] Periodic market sync goroutine (currently only syncs on startup)
+- [x] Periodic market sync goroutine (`syncLoop` with configurable interval)
 - [ ] Implement Kalshi client (uses same ticker pattern as Polymarket)
-- [ ] Add structured logging (log/slog)
+- [x] Add structured logging (log/slog) - implemented with component tagging
 
 ---
 
@@ -63,7 +63,7 @@ Current implementation:
 - [ ] Request rate limiting
 - [ ] Request correlation IDs
 - [ ] Trading execution service (arbiter)
-- [ ] Platform interface abstraction (if adding more platforms)
+- [x] Platform interface abstraction (`internal/platform/platform.go` with Start/Stop methods)
 
 ---
 
@@ -73,12 +73,14 @@ Current implementation:
 
 ```
 main.go
-  └── polymarket.New(cfg, store)
-  └── polymarket.Start(ctx)
-        ├── syncMarkets(ctx)      # Fetch & upsert markets/tokens
-        ├── websocket.New()       # Connect WS
-        ├── subscribeToMarkets()  # Subscribe to all tokens
-        └── for { ReadMessage }   # Blocking read loop
+  └── collector.platforms["polymarket"] = polymarket.New(cfg, store, logger)
+  └── platform.Start(ctx)
+        ├── websocket.New()           # Connect WS
+        ├── go syncLoop(ctx)          # Background goroutine:
+        │     ├── syncMarkets()       #   - Initial sync
+        │     ├── subscribeToMarkets()#   - Initial subscribe
+        │     └── ticker.C → sync     #   - Periodic re-sync (configurable interval)
+        └── for { ReadMessage }       # Blocking read loop
 ```
 
 ### Token ID Strategy

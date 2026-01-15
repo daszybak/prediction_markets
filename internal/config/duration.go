@@ -9,7 +9,8 @@ type Duration time.Duration
 
 func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
-	err := unmarshal(&s); if err != nil {
+	err := unmarshal(&s)
+	if err != nil {
 		return err
 	}
 
@@ -25,4 +26,3 @@ func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
 func (d *Duration) Duration() time.Duration {
 	return time.Duration(*d)
 }
-

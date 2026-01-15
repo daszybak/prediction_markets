@@ -25,15 +25,15 @@ func New(baseURL string, apiKey string) *Client {
 }
 
 type Market struct {
-	Ticker         string        `json:"ticker"`
-	RulesPrimary   string        `json:"rules_primary"`
-	RulesSecondary string        `json:"rules_secondary"`
+	Ticker               string    `json:"ticker"`
+	RulesPrimary         string    `json:"rules_primary"`
+	RulesSecondary       string    `json:"rules_secondary"`
 	LatestExpirationTime time.Time `json:"latest_expiration_time"`
 }
 
 type MarketPage struct {
 	Markets []*Market `json:"markets"`
-	Cursor  string   `json:"cursor"`
+	Cursor  string    `json:"cursor"`
 }
 
 func (c *Client) GetMarkets(cursor string) (*MarketPage, error) {

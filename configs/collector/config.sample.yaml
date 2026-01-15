@@ -25,7 +25,7 @@ platforms:
     ws_url: '${POLYMARKET_WS_URL}'
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
-    market_sync_interval: '${POLYMARKET_CLOB_URL}'
+    market_sync_interval: '${POLYMARKET_MARKET_SYNC_INTERVAL}'
 
   kalshi:
     api_url: '${KALSHI_API_URL}'

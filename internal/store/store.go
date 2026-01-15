@@ -16,7 +16,7 @@ type Store struct {
 // NewStore creates a new Store with the given connection pool.
 func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{
-		Queries: newQueries(pool),
+		Queries: New(pool),
 		pool:    pool,
 	}
 }

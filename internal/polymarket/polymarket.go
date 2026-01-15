@@ -1,3 +1,4 @@
+// Package polymarket adapts Polymarket's APIs (CLOB, Gamma, WebSocket) to the Platform interface.
 package polymarket
 
 import (
@@ -10,23 +11,24 @@ import (
 	"github.com/daszybak/prediction_markets/internal/polymarket/gamma"
 	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
 	"github.com/daszybak/prediction_markets/internal/store"
+	"github.com/daszybak/prediction_markets/pkg/hashset"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const platformName = "polymarket"
 
 type Config struct {
-	ClobURL      string
-	GammaURL     string
-	WebsocketURL string
+	ClobURL            string
+	GammaURL           string
+	WebsocketURL       string
 	MarketSyncInterval time.Duration
 }
 
 type Polymarket struct {
-	config Config
-	store  *store.Store
-	log    *slog.Logger
-	subscribedTokens map[string]struct{}
+	config           Config
+	store            *store.Store
+	log              *slog.Logger
+	subscribedTokens hashset.Set[string]
 
 	clob  *clob.Client
 	gamma *gamma.Client
@@ -56,7 +58,6 @@ func (p *Polymarket) Start(ctx context.Context) error {
 	}
 	p.ws = ws
 	p.log.Info("websocket connected", "url", p.config.WebsocketURL)
-
 
 	go p.syncLoop(ctx)
 
@@ -135,7 +136,7 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 	}
 
 	for _, m := range markets {
-		// Parse end date
+		// Parse end date.
 		var endDate pgtype.Timestamptz
 		if m.EndDateISO != "" {
 			t, err := time.Parse(time.RFC3339, m.EndDateISO)
@@ -146,7 +147,7 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 			}
 		}
 
-		// Upsert market
+		// Upsert market.
 		if err := p.store.UpsertMarket(ctx, store.UpsertMarketParams{
 			ID:          m.ConditionID,
 			Platform:    platformName,
@@ -156,7 +157,7 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 			return fmt.Errorf("upsert market %s: %w", m.ConditionID, err)
 		}
 
-		// Upsert tokens
+		// Upsert tokens.
 		for _, t := range m.Tokens {
 			if err := p.store.UpsertToken(ctx, store.UpsertTokenParams{
 				ID:       t.TokenID,

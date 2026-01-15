@@ -153,7 +153,10 @@ See `.env.sample` for all available variables.
 - `POSTGRES_PASSWORD` - Database password
 
 **Platform configs:**
-- `POLYMARKET_*` - Polymarket API settings
+- `POLYMARKET_WS_URL` - WebSocket endpoint
+- `POLYMARKET_GAMMA_URL` - Gamma API (market metadata)
+- `POLYMARKET_CLOB_URL` - CLOB API (orderbook)
+- `POLYMARKET_MARKET_SYNC_INTERVAL` - How often to sync markets (e.g., `5m`)
 - `KALSHI_*` - Kalshi API settings
 
 ## Architecture
@@ -204,11 +207,17 @@ See `.env.sample` for all available variables.
 
 | Platform | Type | Status |
 |----------|------|--------|
-| Polymarket | DeFi/Crypto | Implemented (WS + REST) |
-| Kalshi | US Regulated | Planned |
+| Polymarket | DeFi/Crypto | Active (WebSocket orderbook, REST market sync) |
+| Kalshi | US Regulated | In Progress |
 | PredictIt | US Political | Planned |
 | Metaculus | Community | Planned |
 | Manifold | Play Money | Planned |
+
+## Related Projects
+
+- [Polymarket/agents](https://github.com/Polymarket/agents) - Official AI agents with Chroma vectorization
+- [awesome-prediction-markets](https://github.com/0xperp/awesome-prediction-markets) - Curated list of tools
+- [PredictOS](https://github.com/PredictionXBT/PredictOS) - Opensource prediction market framework
 
 ## Key Features
 

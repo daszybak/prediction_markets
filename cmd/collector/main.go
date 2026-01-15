@@ -68,15 +68,16 @@ func main() {
 
 	polymarketLogger := collector.logger.With("component", "polymarket")
 	collector.platforms["polymarket"] = polymarket.New(polymarket.Config{
-		ClobURL:      cfg.Platforms.PolyMarket.ClobURL,
-		GammaURL:     cfg.Platforms.PolyMarket.GammaURL,
-		WebsocketURL: cfg.Platforms.PolyMarket.WebsocketURL,
+		ClobURL:            cfg.Platforms.PolyMarket.ClobURL,
+		GammaURL:           cfg.Platforms.PolyMarket.GammaURL,
+		WebsocketURL:       cfg.Platforms.PolyMarket.WebsocketURL,
 		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),
 	}, collector.store, polymarketLogger)
 
 	for platformName, platform := range collector.platforms {
-		err = platform.Start(ctx); if err != nil {
-			collector.logger.Error("starting platform", "plaftorm", platformName, "error", err)
+		err = platform.Start(ctx)
+		if err != nil {
+			collector.logger.Error("starting platform", "platform", platformName, "error", err)
 		}
 	}
 }
