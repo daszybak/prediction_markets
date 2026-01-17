@@ -94,6 +94,54 @@ type OrderBookSnapshot struct {
 	IngestedAt *time.Time `json:"ingested_at"`
 }
 
+type OrderBookSnapshots1d struct {
+	Bucket     interface{} `json:"bucket"`
+	TokenID    string      `json:"token_id"`
+	Side       string      `json:"side"`
+	OpenPrice  interface{} `json:"open_price"`
+	HighPrice  interface{} `json:"high_price"`
+	LowPrice   interface{} `json:"low_price"`
+	ClosePrice interface{} `json:"close_price"`
+	TotalSize  int64       `json:"total_size"`
+	NumUpdates int64       `json:"num_updates"`
+}
+
+type OrderBookSnapshots1h struct {
+	Bucket     interface{} `json:"bucket"`
+	TokenID    string      `json:"token_id"`
+	Side       string      `json:"side"`
+	OpenPrice  interface{} `json:"open_price"`
+	HighPrice  interface{} `json:"high_price"`
+	LowPrice   interface{} `json:"low_price"`
+	ClosePrice interface{} `json:"close_price"`
+	TotalSize  int64       `json:"total_size"`
+	NumUpdates int64       `json:"num_updates"`
+}
+
+type OrderBookSnapshots1m struct {
+	Bucket     interface{} `json:"bucket"`
+	TokenID    string      `json:"token_id"`
+	Side       string      `json:"side"`
+	OpenPrice  interface{} `json:"open_price"`
+	HighPrice  interface{} `json:"high_price"`
+	LowPrice   interface{} `json:"low_price"`
+	ClosePrice interface{} `json:"close_price"`
+	TotalSize  int64       `json:"total_size"`
+	NumUpdates int64       `json:"num_updates"`
+}
+
+type OrderBookSnapshots5m struct {
+	Bucket     interface{} `json:"bucket"`
+	TokenID    string      `json:"token_id"`
+	Side       string      `json:"side"`
+	OpenPrice  interface{} `json:"open_price"`
+	HighPrice  interface{} `json:"high_price"`
+	LowPrice   interface{} `json:"low_price"`
+	ClosePrice interface{} `json:"close_price"`
+	TotalSize  int64       `json:"total_size"`
+	NumUpdates int64       `json:"num_updates"`
+}
+
 type Token struct {
 	ID              string      `json:"id"`
 	MarketID        string      `json:"market_id"`
