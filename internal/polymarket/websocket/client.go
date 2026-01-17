@@ -25,9 +25,9 @@ type Client struct {
 }
 
 type Auth struct {
-	APIKey    string `json:"apiKey"`
-	Secret    string `json:"secret"`
-	Passphras string `json:"passphrase"`
+	APIKey     string `json:"apiKey"`
+	Secret     string `json:"secret"`
+	Passphrase string `json:"passphrase"`
 }
 
 type MarketSubscription struct {

@@ -69,9 +69,9 @@ down *args:
 logs *args:
     docker compose logs {{args}}
 
-# Start only dependencies (db, redis) for local Go development.
+# Start only dependencies (db) for local Go development.
 deps *args:
-    docker compose up -d timescaledb redis {{args}}
+    docker compose up -d timescaledb {{args}}
 
 # ============================================================================
 # Container execution
@@ -92,10 +92,6 @@ shell service=default_service:
 # Connect to TimescaleDB.
 db:
     docker compose exec timescaledb psql -U $POSTGRES_USER -d $POSTGRES_DB
-
-# Connect to Redis CLI.
-redis:
-    docker compose exec redis redis-cli
 
 # Run migrations via container.
 # Examples:

@@ -9,6 +9,11 @@
 # Log level: debug, info, warn, error (default: info)
 log_level: '${LOG_LEVEL}'
 
+# Engine configuration
+engine:
+  snapshot_interval: '${ENGINE_SNAPSHOT_INTERVAL}'  # How often to snapshot orderbooks (e.g., 10s, 1m)
+  snapshot_depth: ${ENGINE_SNAPSHOT_DEPTH}          # Number of price levels to capture per side
+
 # Database configuration (PostgreSQL/TimescaleDB)
 database:
   host: '${POSTGRES_HOST}'
@@ -34,12 +39,6 @@ platforms:
     ws_url: '${KALSHI_WS_URL}'
     api_key_id: '${KALSHI_API_KEY_ID}'
     api_private_key: '${KALSHI_API_PRIVATE_KEY}'  # base64-encoded PEM RSA private key
-
-# Redis configuration (for order book state and signals)
-redis:
-  host: '${REDIS_HOST}'
-  port: ${REDIS_PORT}
-  db: ${REDIS_DB}
 
 # Trading configuration
 trading:

@@ -18,15 +18,26 @@ This project collects real-time data from prediction markets (Polymarket, Kalshi
                                    │
                     ┌──────────────▼──────────────┐
                     │    Go Collector Service     │
-                    │    (real-time + cache)      │
-                    └──────────────┬──────────────┘
+                    │                             │
+                    │  ┌───────────────────────┐  │
+                    │  │   Engine (in-memory)  │  │
+                    │  │  goroutine per token  │  │
+                    │  │  btree orderbooks     │  │
+                    │  │  nanosecond updates   │  │
+                    │  └───────────┬───────────┘  │
+                    │              │              │
+                    │       SnapshotWriter       │
+                    │     (periodic batches)     │
+                    └──────────────┼──────────────┘
                                    │
        ┌───────────────────────────┼───────────────────────────┐
        │                           │                           │
-┌──────▼──────┐             ┌──────▼──────┐             ┌──────▼──────┐
-│ TimescaleDB │             │    Redis    │             │  pgvector   │
-│(time-series)│             │   (cache)   │             │ (embeddings)│
-└──────┬──────┘             └─────────────┘             └──────┬──────┘
+┌──────▼──────┐                    │                    ┌──────▼──────┐
+│ TimescaleDB │◀───────────────────┘                    │  pgvector   │
+│(time-series)│                                         │ (embeddings)│
+│ snapshots,  │                                         │  market     │
+│ aggregates  │                                         │  matching   │
+└──────┬──────┘                                         └──────┬──────┘
        │                                                       │
        └───────────────────────┬───────────────────────────────┘
                                │
@@ -42,8 +53,8 @@ This project collects real-time data from prediction markets (Polymarket, Kalshi
 
 | Platform | Type | Data Available | Status |
 |----------|------|----------------|--------|
-| **Polymarket** | DeFi/Crypto | WebSocket orderbook, trades | Active |
-| **Kalshi** | US Regulated | REST API, orderbook | Active |
+| **Polymarket** | DeFi/Crypto | WebSocket orderbook (full message parsing), REST market sync | ✅ Active |
+| **Kalshi** | US Regulated | REST API client started, WebSocket pending | 🚧 In Progress |
 | **PredictIt** | US Political | REST API | Planned |
 | **Metaculus** | Community/Scientific | REST API | Planned |
 | **Manifold** | Play Money | REST API | Planned |

@@ -10,6 +10,10 @@ import (
 
 type config struct {
 	LogLevel string `yaml:"log_level"` // debug, info, warn, error
+	Engine   struct {
+		SnapshotInterval configtypes.Duration `yaml:"snapshot_interval"`
+		SnapshotDepth    int                  `yaml:"snapshot_depth"`
+	} `yaml:"engine"`
 	Database struct {
 		Host     string `yaml:"host"`
 		Port     int    `yaml:"port"`
@@ -22,8 +26,8 @@ type config struct {
 	Platforms struct {
 		PolyMarket struct {
 			WS struct {
-				WebsocketURL       string               `yaml:"url"`
-				MarketEndpoint     string               `yaml:"market_endpoint"`
+				WebsocketURL   string `yaml:"url"`
+				MarketEndpoint string `yaml:"market_endpoint"`
 			}
 			GammaURL           string               `yaml:"gamma_url"`
 			ClobURL            string               `yaml:"clob_url"`
@@ -58,6 +62,14 @@ func readConfig(configPath *string) (*config, error) {
 }
 
 func validateConfig(cfg *config) error {
+	// Engine
+	if cfg.Engine.SnapshotInterval.Duration() <= 0 {
+		return fmt.Errorf("engine.snapshot_interval must be positive")
+	}
+	if cfg.Engine.SnapshotDepth <= 0 {
+		return fmt.Errorf("engine.snapshot_depth must be positive")
+	}
+
 	// Database
 	if cfg.Database.Host == "" {
 		return fmt.Errorf("database.host is required")

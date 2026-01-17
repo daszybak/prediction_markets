@@ -6,7 +6,11 @@ import (
 	"encoding/json"
 )
 
-type Price int64
+type (
+	Price int64
+	// TODO Rethink where this should be defined.
+	Size int64
+)
 
 var _ json.Unmarshaler = (*Price)(nil)
 

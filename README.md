@@ -25,13 +25,13 @@ cp .env.sample .env
 # Start all services with hot reload
 just up
 
-# Or start only dependencies (DB, Redis) for local Go development
+# Or start only dependencies (DB) for local Go development
 just deps
 just run  # Runs collector locally
 ```
 
 **What happens:**
-- TimescaleDB and Redis start with health checks
+- TimescaleDB starts with health checks
 - Config auto-generated from `.env` via `envsubst`
 - Air watches for file changes and rebuilds
 
@@ -75,11 +75,10 @@ just prod
 |---------|-------------|
 | `just up` | Start dev environment (hot reload) |
 | `just down` | Stop all services |
-| `just deps` | Start only DB and Redis |
+| `just deps` | Start only DB |
 | `just run` | Run collector locally |
 | `just logs` | View logs |
 | `just db` | Connect to TimescaleDB |
-| `just redis` | Connect to Redis CLI |
 
 ### Database
 
@@ -159,6 +158,10 @@ See `.env.sample` for all available variables.
 - `POLYMARKET_MARKET_SYNC_INTERVAL` - How often to sync markets (e.g., `5m`)
 - `KALSHI_*` - Kalshi API settings
 
+**Engine configs:**
+- `ENGINE_SNAPSHOT_INTERVAL` - How often to snapshot orderbooks to DB (e.g., `10s`)
+- `ENGINE_SNAPSHOT_DEPTH` - Number of price levels per side to capture (e.g., `10`)
+
 ## Architecture
 
 ```
@@ -179,10 +182,10 @@ See `.env.sample` for all available variables.
           ┌─────────────────────┼─────────────────────┐
           │                     │                     │
    ┌──────▼──────┐       ┌──────▼──────┐      ┌──────▼──────┐
-   │    Redis    │       │ TimescaleDB │      │  pgvector   │
-   │ (real-time) │       │(time-series)│      │ (semantic)  │
-   │  prices,    │       │  historical │      │  market     │
-   │  orderbook  │       │  analysis   │      │  matching   │
+   │   Engine    │       │ TimescaleDB │      │  pgvector   │
+   │ (in-memory) │       │(time-series)│      │ (semantic)  │
+   │  orderbooks │       │  snapshots, │      │  market     │
+   │  per token  │       │  analysis   │      │  matching   │
    └──────┬──────┘       └──────┬──────┘      └──────┬──────┘
           │                     │                    │
           └─────────────────────┼────────────────────┘
@@ -197,18 +200,18 @@ See `.env.sample` for all available variables.
 
 ## Data Flow
 
-| Path | Data | Latency | Storage |
-|------|------|---------|---------|
-| **Hot** | Prices, spreads, orderbook | <1ms | Redis |
-| **Warm** | Time-series, metrics | <100ms | TimescaleDB |
-| **Cold** | Market matching, news correlation | <500ms | pgvector |
+| Path | Data | Latency | Storage | Status |
+|------|------|---------|---------|--------|
+| **Hot** | Prices, spreads, orderbook | <1µs | In-memory Engine | ✅ Active |
+| **Warm** | Time-series snapshots | <100ms | TimescaleDB | ✅ Active |
+| **Cold** | Market matching, news correlation | <500ms | pgvector | 🚧 Schema ready |
 
 ## Supported Platforms
 
 | Platform | Type | Status |
 |----------|------|--------|
-| Polymarket | DeFi/Crypto | Active (WebSocket orderbook, REST market sync) |
-| Kalshi | US Regulated | In Progress |
+| Polymarket | DeFi/Crypto | ✅ Active (WebSocket orderbook with full message parsing, REST market sync, token subscription) |
+| Kalshi | US Regulated | 🚧 In Progress (API client started, WebSocket pending) |
 | PredictIt | US Political | Planned |
 | Metaculus | Community | Planned |
 | Manifold | Play Money | Planned |
@@ -221,7 +224,68 @@ See `.env.sample` for all available variables.
 
 ## Key Features
 
+- **In-memory order books**: Goroutine-per-token architecture, no external cache needed
 - **Cross-platform arbitrage**: Match equivalent markets via pgvector embeddings + LLM verification
 - **News signals**: Correlate news → markets using semantic search
 - **Real-time collection**: WebSocket streams for orderbook depth
-- **Time-series analysis**: TimescaleDB hypertables with compression
+- **Time-series snapshots**: Periodic order book snapshots to TimescaleDB with continuous aggregates
+
+## Engine Architecture
+
+The hot path uses in-memory order books with a dedicated goroutine per token:
+
+```
+WebSocket ──▶ Collector ──▶ Engine Router ─┬──▶ chan ──▶ BTC worker ──▶ BTC orderbook (btree)
+                                           ├──▶ chan ──▶ ETH worker ──▶ ETH orderbook (btree)
+                                           └──▶ chan ──▶ SOL worker ──▶ SOL orderbook (btree)
+                                                              │
+                                                      SnapshotWriter (ticker)
+                                                              │
+                                                              ▼
+                                                    InsertOrderBookSnapshotBatch
+                                                              │
+                                                              ▼
+                                                       TimescaleDB
+```
+
+- **No Redis**: Order book state lives in-memory (nanosecond access)
+- **No mutex contention**: Each token has its own goroutine and channel
+- **Parallel processing**: Updates to different tokens never block each other
+- **Btree orderbooks**: `google/btree` for O(log n) insert and sorted retrieval
+- **Periodic persistence**: SnapshotWriter runs on configurable interval, batch inserts to TimescaleDB
+
+## TimescaleDB Snapshots
+
+Order book snapshots use TimescaleDB hypertables with continuous aggregates:
+
+```sql
+-- Raw snapshots (every N seconds)
+CREATE TABLE order_book_snapshots (
+    time        TIMESTAMPTZ NOT NULL,
+    token_id    TEXT NOT NULL,
+    side        TEXT NOT NULL,
+    price       BIGINT NOT NULL,
+    size        BIGINT NOT NULL
+);
+SELECT create_hypertable('order_book_snapshots', 'time');
+
+-- Continuous aggregate for OHLC (auto-refreshed)
+CREATE MATERIALIZED VIEW order_book_1m
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 minute', time) AS bucket,
+    token_id,
+    first(price, time) as open,
+    max(price) as high,
+    min(price) as low,
+    last(price, time) as close,
+    sum(size) as volume
+FROM order_book_snapshots
+WHERE side = 'bids'
+GROUP BY bucket, token_id;
+```
+
+Best practices:
+- Chunk interval: ~1 day for order book data
+- Continuous aggregates: 1m, 5m, 1h, 1d rollups
+- Compression: Enable after 7 days

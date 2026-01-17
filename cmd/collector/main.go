@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/daszybak/prediction_markets/internal/engine"
 	"github.com/daszybak/prediction_markets/internal/platform"
 	"github.com/daszybak/prediction_markets/internal/polymarket"
 	"github.com/daszybak/prediction_markets/internal/store"
@@ -15,6 +16,7 @@ import (
 
 type collector struct {
 	platforms map[string]platform.Platform
+	engine    *engine.Client
 	store     *store.Store
 	logger    *slog.Logger
 }
@@ -66,12 +68,27 @@ func main() {
 
 	collector.store = store.NewStore(pool)
 
+	// Initialize the engine.
+	collector.engine = engine.New(collector.logger)
+	go collector.engine.Start(ctx)
+	collector.logger.Info("started engine")
+
+	// Start the snapshot writer.
+	snapshotWriter := engine.NewSnapshotWriter(
+		collector.engine,
+		collector.store,
+		cfg.Engine.SnapshotInterval.Duration(),
+		cfg.Engine.SnapshotDepth,
+		collector.logger,
+	)
+	go snapshotWriter.Start(ctx)
+
 	polymarketLogger := collector.logger.With("component", "polymarket")
 	collector.platforms["polymarket"] = polymarket.New(polymarket.Config{
-		ClobURL:            cfg.Platforms.PolyMarket.ClobURL,
-		GammaURL:           cfg.Platforms.PolyMarket.GammaURL,
-		Websocket:          polymarket.Websocket{
-			URL: cfg.Platforms.PolyMarket.WS.WebsocketURL,
+		ClobURL:  cfg.Platforms.PolyMarket.ClobURL,
+		GammaURL: cfg.Platforms.PolyMarket.GammaURL,
+		Websocket: polymarket.Websocket{
+			URL:            cfg.Platforms.PolyMarket.WS.WebsocketURL,
 			MarketEndpoint: cfg.Platforms.PolyMarket.WS.MarketEndpoint,
 		},
 		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),

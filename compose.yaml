@@ -23,14 +23,11 @@ services:
     environment:
       - SERVICE=collector
       - POSTGRES_HOST=timescaledb
-      - REDIS_HOST=redis
     restart: unless-stopped
     # TODO: Add healthcheck once HTTP health endpoint is implemented in the service
     depends_on:
       migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     networks:
       - prediction
 
@@ -43,12 +40,9 @@ services:
   #   environment:
   #     - LOG_LEVEL=info
   #     - DATABASE_URL=postgres://${POSTGRES_USER:-prediction}:${POSTGRES_PASSWORD:?required}@timescaledb:5432/${POSTGRES_DB:-prediction}?sslmode=disable
-  #     - REDIS_URL=redis://redis:6379/0
   #   restart: unless-stopped
   #   depends_on:
   #     timescaledb:
-  #       condition: service_healthy
-  #     redis:
   #       condition: service_healthy
   #   networks:
   #     - prediction
@@ -71,22 +65,8 @@ services:
     networks:
       - prediction
 
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - prediction
-
 networks:
   prediction:
 
 volumes:
   timescaledb_data:
-  redis_data:

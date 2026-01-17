@@ -25,7 +25,7 @@ type Config struct {
 }
 
 type Websocket struct {
-	URL string
+	URL            string
 	MarketEndpoint string
 }
 
@@ -77,21 +77,20 @@ func (p *Polymarket) Start(ctx context.Context) error {
 				p.log.Error("read message failed", "error", err)
 				return err
 			}
-			// TODO: Process message (update order book, record trade, etc.)
 			p.log.Debug("message received", "size", len(msg.EventType))
+			p.processMessage(msg)
 		}
 	}
 }
 
 func (p *Polymarket) processMessage(msg *websocket.Message) error {
-	switch{
-	case msg.EventType == websocket.BookEvent:
+	switch msg.EventType {
+	case websocket.BookEvent:
 		if msg.Book == nil {
 			return fmt.Errorf("event type is %s but object book doesn't exist", websocket.BookEvent)
 		}
-
-
 	}
+	return nil
 }
 
 // Stop closes the websocket connection.
