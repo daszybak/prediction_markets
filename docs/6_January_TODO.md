@@ -85,7 +85,7 @@
 
 ### TimescaleDB Continuous Aggregates
 
-- [ ] Create continuous aggregates for OHLC rollups (1m, 5m, 1h, 1d)
+- [x] Create continuous aggregates for OHLC rollups (1m, 5m, 1h, 1d)
 
 ---
 
