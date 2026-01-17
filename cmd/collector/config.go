@@ -21,7 +21,10 @@ type config struct {
 	} `yaml:"database"`
 	Platforms struct {
 		PolyMarket struct {
-			WebsocketURL       string               `yaml:"ws_url"`
+			WS struct {
+				WebsocketURL       string               `yaml:"url"`
+				MarketEndpoint     string               `yaml:"market_endpoint"`
+			}
 			GammaURL           string               `yaml:"gamma_url"`
 			ClobURL            string               `yaml:"clob_url"`
 			MarketSyncInterval configtypes.Duration `yaml:"market_sync_interval"`
@@ -79,8 +82,11 @@ func validateConfig(cfg *config) error {
 	}
 
 	// Polymarket
-	if cfg.Platforms.PolyMarket.WebsocketURL == "" {
-		return fmt.Errorf("platforms.polymarket.ws_url is required")
+	if cfg.Platforms.PolyMarket.WS.WebsocketURL == "" {
+		return fmt.Errorf("platforms.polymarket.ws.url is required")
+	}
+	if cfg.Platforms.PolyMarket.WS.MarketEndpoint == "" {
+		return fmt.Errorf("platforms.polymarket.ws.market_endpoint is required")
 	}
 	if cfg.Platforms.PolyMarket.GammaURL == "" {
 		return fmt.Errorf("platforms.polymarket.gamma_url is required")

@@ -37,16 +37,16 @@ type MarketSubscription struct {
 	InitialDump *bool    `json:"initial_dump"`
 }
 
-func New(ctx context.Context, url string) (*Client, error) {
+func New(ctx context.Context, url string, endpoint string) (*Client, error) {
 	dialer := websocket.Dialer{
 		HandshakeTimeout: HandshakeTimeout,
 	}
 
-	conn, resp, err := dialer.DialContext(ctx, url, http.Header{})
+	conn, resp, err := dialer.DialContext(ctx, url+endpoint, http.Header{})
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Connected successfully to Polymarket websocket. Polymarket websocket responded: %v", resp.Status)
+	log.Printf("Connected successfully to Polymarket websocket endpoint: %s. Polymarket websocket responded: %v", endpoint, resp.Status)
 
 	c := &Client{
 		conn:     conn,

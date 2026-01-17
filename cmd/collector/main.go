@@ -70,7 +70,10 @@ func main() {
 	collector.platforms["polymarket"] = polymarket.New(polymarket.Config{
 		ClobURL:            cfg.Platforms.PolyMarket.ClobURL,
 		GammaURL:           cfg.Platforms.PolyMarket.GammaURL,
-		WebsocketURL:       cfg.Platforms.PolyMarket.WebsocketURL,
+		Websocket:          polymarket.Websocket{
+			URL: cfg.Platforms.PolyMarket.WS.WebsocketURL,
+			MarketEndpoint: cfg.Platforms.PolyMarket.WS.MarketEndpoint,
+		},
 		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),
 	}, collector.store, polymarketLogger)
 

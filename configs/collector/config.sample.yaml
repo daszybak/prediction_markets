@@ -22,7 +22,9 @@ database:
 # Prediction market platforms
 platforms:
   polymarket:
-    ws_url: '${POLYMARKET_WS_URL}'
+    ws:
+      url: '${POLYMARKET_WS_URL}'
+      market_endpoint: '${POLYMARKET_WS_MARKET_ENDPOINT}'
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
     market_sync_interval: '${POLYMARKET_MARKET_SYNC_INTERVAL}'

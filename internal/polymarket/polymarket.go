@@ -20,8 +20,13 @@ const platformName = "polymarket"
 type Config struct {
 	ClobURL            string
 	GammaURL           string
-	WebsocketURL       string
+	Websocket          Websocket
 	MarketSyncInterval time.Duration
+}
+
+type Websocket struct {
+	URL string
+	MarketEndpoint string
 }
 
 type Polymarket struct {
@@ -52,12 +57,11 @@ func (p *Polymarket) Start(ctx context.Context) error {
 	p.log.Info("starting")
 
 	// Connect websocket
-	ws, err := websocket.New(ctx, p.config.WebsocketURL)
+	ws, err := websocket.New(ctx, p.config.Websocket.URL, p.config.Websocket.MarketEndpoint)
 	if err != nil {
 		return fmt.Errorf("websocket connect: %w", err)
 	}
 	p.ws = ws
-	p.log.Info("websocket connected", "url", p.config.WebsocketURL)
 
 	go p.syncLoop(ctx)
 
@@ -74,8 +78,19 @@ func (p *Polymarket) Start(ctx context.Context) error {
 				return err
 			}
 			// TODO: Process message (update order book, record trade, etc.)
-			p.log.Debug("message received", "size", len(msg))
+			p.log.Debug("message received", "size", len(msg.EventType))
 		}
+	}
+}
+
+func (p *Polymarket) processMessage(msg *websocket.Message) error {
+	switch{
+	case msg.EventType == websocket.BookEvent:
+		if msg.Book == nil {
+			return fmt.Errorf("event type is %s but object book doesn't exist", websocket.BookEvent)
+		}
+
+
 	}
 }
 
