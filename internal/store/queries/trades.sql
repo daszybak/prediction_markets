@@ -1,10 +1,10 @@
 -- name: InsertTrade :exec
-INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: InsertTradeBatch :copyfrom
-INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: GetTradeByID :one
 SELECT * FROM trades WHERE trade_id = $1;

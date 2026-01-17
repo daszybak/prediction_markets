@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/daszybak/prediction_markets/internal/price"
 	"github.com/gorilla/websocket"
 )
 
@@ -165,18 +166,18 @@ type Book struct {
 }
 
 type OrderSummary struct {
-	Price string `json:"price"`
-	Size  string `json:"size"`
+	Price price.Price `json:"price"`
+	Size  price.Size  `json:"size"`
 }
 
 type PriceChange struct {
-	AssetID string `json:"asset_id"`
-	Price   string `json:"price"`
-	Size    string `json:"size"`
-	Side    string `json:"side"`
-	Hash    string `json:"hash"`
-	BestBid string `json:"best_ask"`
-	BestAsk string `json:"best_bid"`
+	AssetID string      `json:"asset_id"`
+	Price   price.Price `json:"price"`
+	Size    price.Size  `json:"size"`
+	Side    string      `json:"side"`
+	Hash    string      `json:"hash"`
+	BestBid price.Price `json:"best_ask"`
+	BestAsk price.Price `json:"best_bid"`
 }
 
 type TickSizeChange struct {

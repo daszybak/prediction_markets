@@ -92,7 +92,7 @@ func main() {
 			MarketEndpoint: cfg.Platforms.PolyMarket.WS.MarketEndpoint,
 		},
 		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),
-	}, collector.store, polymarketLogger)
+	}, collector.store, collector.engine, polymarketLogger)
 
 	for platformName, platform := range collector.platforms {
 		err = platform.Start(ctx)

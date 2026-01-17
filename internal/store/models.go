@@ -12,12 +12,12 @@ import (
 )
 
 type Market struct {
-	ID          string             `json:"id"`
-	Platform    string             `json:"platform"`
-	Description string             `json:"description"`
-	EndDate     pgtype.Timestamptz `json:"end_date"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+	ID          string     `json:"id"`
+	Platform    string     `json:"platform"`
+	Description string     `json:"description"`
+	EndDate     *time.Time `json:"end_date"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 type MarketEmbedding struct {
@@ -40,16 +40,16 @@ type MarketPair struct {
 }
 
 type NewsArticle struct {
-	ID                int32              `json:"id"`
-	Source            string             `json:"source"`
-	SourceTier        string             `json:"source_tier"`
-	Url               pgtype.Text        `json:"url"`
-	Headline          string             `json:"headline"`
-	Content           pgtype.Text        `json:"content"`
-	HeadlineEmbedding pgvector.Vector    `json:"headline_embedding"`
-	PublishedAt       time.Time          `json:"published_at"`
-	ProcessedAt       pgtype.Timestamptz `json:"processed_at"`
-	CreatedAt         time.Time          `json:"created_at"`
+	ID                int32           `json:"id"`
+	Source            string          `json:"source"`
+	SourceTier        string          `json:"source_tier"`
+	Url               pgtype.Text     `json:"url"`
+	Headline          string          `json:"headline"`
+	Content           pgtype.Text     `json:"content"`
+	HeadlineEmbedding pgvector.Vector `json:"headline_embedding"`
+	PublishedAt       time.Time       `json:"published_at"`
+	ProcessedAt       *time.Time      `json:"processed_at"`
+	CreatedAt         time.Time       `json:"created_at"`
 }
 
 type NewsMarketLink struct {
@@ -65,6 +65,7 @@ type NewsMarketLink struct {
 }
 
 type OrderBookMetric struct {
+	// Event time from source API
 	Time       time.Time   `json:"time"`
 	TokenID    string      `json:"token_id"`
 	MidPrice   pgtype.Int8 `json:"mid_price"`
@@ -77,15 +78,20 @@ type OrderBookMetric struct {
 	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
 	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
 	Imbalance  pgtype.Int2 `json:"imbalance"`
+	// When data was stored in our DB
+	IngestedAt *time.Time `json:"ingested_at"`
 }
 
 type OrderBookSnapshot struct {
+	// Event time from source API
 	Time    time.Time `json:"time"`
 	TokenID string    `json:"token_id"`
 	Side    string    `json:"side"`
 	Level   int16     `json:"level"`
 	Price   int64     `json:"price"`
 	Size    int64     `json:"size"`
+	// When data was stored in our DB
+	IngestedAt *time.Time `json:"ingested_at"`
 }
 
 type Token struct {
@@ -98,6 +104,7 @@ type Token struct {
 }
 
 type Trade struct {
+	// Event time from source API
 	Time    time.Time   `json:"time"`
 	TokenID string      `json:"token_id"`
 	TradeID pgtype.Text `json:"trade_id"`
@@ -106,4 +113,6 @@ type Trade struct {
 	Side    string      `json:"side"`
 	Maker   pgtype.Text `json:"maker"`
 	Taker   pgtype.Text `json:"taker"`
+	// When data was stored in our DB
+	IngestedAt *time.Time `json:"ingested_at"`
 }

@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/daszybak/prediction_markets/internal/engine"
 	"github.com/daszybak/prediction_markets/internal/polymarket/clob"
 	"github.com/daszybak/prediction_markets/internal/polymarket/gamma"
 	"github.com/daszybak/prediction_markets/internal/polymarket/websocket"
 	"github.com/daszybak/prediction_markets/internal/store"
 	"github.com/daszybak/prediction_markets/pkg/hashset"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const platformName = "polymarket"
@@ -34,6 +34,7 @@ type Polymarket struct {
 	store            *store.Store
 	log              *slog.Logger
 	subscribedTokens hashset.Set[string]
+	engine           *engine.Client
 
 	clob  *clob.Client
 	gamma *gamma.Client
@@ -41,10 +42,11 @@ type Polymarket struct {
 }
 
 // New creates a Polymarket client. Call Start() to connect.
-func New(cfg Config, s *store.Store, log *slog.Logger) *Polymarket {
+func New(cfg Config, s *store.Store, eng *engine.Client, log *slog.Logger) *Polymarket {
 	return &Polymarket{
 		config: cfg,
 		store:  s,
+		engine: eng,
 		log:    log.With("component", platformName),
 		clob:   clob.New(cfg.ClobURL),
 		gamma:  gamma.New(cfg.GammaURL),
@@ -83,14 +85,76 @@ func (p *Polymarket) Start(ctx context.Context) error {
 	}
 }
 
-func (p *Polymarket) processMessage(msg *websocket.Message) error {
+func (p *Polymarket) processMessage(msg *websocket.Message) {
 	switch msg.EventType {
 	case websocket.BookEvent:
-		if msg.Book == nil {
-			return fmt.Errorf("event type is %s but object book doesn't exist", websocket.BookEvent)
-		}
+		p.handleBook(msg.Book)
+	case websocket.PriceChangeEvent:
+		p.handlePriceChange(msg.PriceChange)
+	default:
+		// TODO Handle other events.
+		p.log.Info("not handling message event type", "event_type", msg.EventType)
 	}
-	return nil
+}
+
+func (p *Polymarket) handleBook(book *websocket.Book) {
+	if book == nil {
+		p.log.Warn("nil book in book event")
+		return
+	}
+
+	// Parse event time from API.
+	eventTime, err := time.Parse(time.RFC3339Nano, book.Timestamp)
+	if err != nil {
+		eventTime = time.Now()
+	}
+
+	// Process buys (bids).
+	for _, order := range book.Buys {
+		p.engine.Send(engine.Update{
+			TokenID:   book.AssetID,
+			Price:     order.Price,
+			Size:      order.Size,
+			Side:      "bids",
+			EventTime: eventTime,
+			IsDelta:   false, // Book is absolute snapshot
+		})
+	}
+
+	// Process sells (asks).
+	for _, order := range book.Sells {
+		p.engine.Send(engine.Update{
+			TokenID:   book.AssetID,
+			Price:     order.Price,
+			Size:      order.Size,
+			Side:      "asks",
+			EventTime: eventTime,
+			IsDelta:   false,
+		})
+	}
+
+	p.log.Debug("processed book", "token", book.AssetID, "bids", len(book.Buys), "asks", len(book.Sells))
+}
+
+func (p *Polymarket) handlePriceChange(pc *websocket.PriceChange) {
+	if pc == nil {
+		p.log.Warn("nil price_change in price_change event")
+		return
+	}
+
+	side := "bids"
+	if pc.Side == "sell" {
+		side = "asks"
+	}
+
+	p.engine.Send(engine.Update{
+		TokenID:   pc.AssetID,
+		Price:     pc.Price,
+		Size:      pc.Size,
+		Side:      side,
+		EventTime: time.Now(), // PriceChange doesn't have timestamp
+		IsDelta:   false,      // Polymarket sends absolute sizes
+	})
 }
 
 // Stop closes the websocket connection.
@@ -151,13 +215,13 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 
 	for _, m := range markets {
 		// Parse end date.
-		var endDate pgtype.Timestamptz
+		var endDate *time.Time
 		if m.EndDateISO != "" {
 			t, err := time.Parse(time.RFC3339, m.EndDateISO)
 			if err != nil {
 				p.log.Warn("invalid end_date_iso", "market_id", m.ConditionID, "value", m.EndDateISO)
 			} else {
-				endDate = pgtype.Timestamptz{Time: t, Valid: true}
+				endDate = &t
 			}
 		}
 

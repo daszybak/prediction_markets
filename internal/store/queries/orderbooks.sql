@@ -1,10 +1,10 @@
 -- name: InsertOrderBookSnapshot :exec
-INSERT INTO order_book_snapshots (time, token_id, side, level, price, size)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO order_book_snapshots (time, token_id, side, level, price, size, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: InsertOrderBookSnapshotBatch :copyfrom
-INSERT INTO order_book_snapshots (time, token_id, side, level, price, size)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO order_book_snapshots (time, token_id, side, level, price, size, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: GetLatestOrderBookSnapshot :many
 SELECT * FROM order_book_snapshots obs
@@ -15,16 +15,16 @@ ORDER BY obs.side, obs.level;
 -- name: InsertOrderBookMetrics :exec
 INSERT INTO order_book_metrics (
     time, token_id, mid_price, best_bid, best_ask, spread, spread_bps,
-    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance
+    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
 -- name: InsertOrderBookMetricsBatch :copyfrom
 INSERT INTO order_book_metrics (
     time, token_id, mid_price, best_bid, best_ask, spread, spread_bps,
-    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance
+    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);
 
 -- name: GetLatestOrderBookMetrics :one
 SELECT * FROM order_book_metrics

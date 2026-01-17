@@ -7,8 +7,7 @@ package store
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 const deleteMarket = `-- name: DeleteMarket :exec
@@ -115,10 +114,10 @@ ON CONFLICT (id) DO UPDATE SET
 `
 
 type UpsertMarketParams struct {
-	ID          string             `json:"id"`
-	Platform    string             `json:"platform"`
-	Description string             `json:"description"`
-	EndDate     pgtype.Timestamptz `json:"end_date"`
+	ID          string     `json:"id"`
+	Platform    string     `json:"platform"`
+	Description string     `json:"description"`
+	EndDate     *time.Time `json:"end_date"`
 }
 
 func (q *Queries) UpsertMarket(ctx context.Context, arg UpsertMarketParams) error {

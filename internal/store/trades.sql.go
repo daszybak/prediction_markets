@@ -13,7 +13,7 @@ import (
 )
 
 const getTradeByID = `-- name: GetTradeByID :one
-SELECT time, token_id, trade_id, price, size, side, maker, taker FROM trades WHERE trade_id = $1
+SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades WHERE trade_id = $1
 `
 
 func (q *Queries) GetTradeByID(ctx context.Context, tradeID pgtype.Text) (Trade, error) {
@@ -28,12 +28,13 @@ func (q *Queries) GetTradeByID(ctx context.Context, tradeID pgtype.Text) (Trade,
 		&i.Side,
 		&i.Maker,
 		&i.Taker,
+		&i.IngestedAt,
 	)
 	return i, err
 }
 
 const getTradesByToken = `-- name: GetTradesByToken :many
-SELECT time, token_id, trade_id, price, size, side, maker, taker FROM trades
+SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
 WHERE token_id = $1
 ORDER BY time DESC
 LIMIT $2
@@ -62,6 +63,7 @@ func (q *Queries) GetTradesByToken(ctx context.Context, arg GetTradesByTokenPara
 			&i.Side,
 			&i.Maker,
 			&i.Taker,
+			&i.IngestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -74,7 +76,7 @@ func (q *Queries) GetTradesByToken(ctx context.Context, arg GetTradesByTokenPara
 }
 
 const getTradesRange = `-- name: GetTradesRange :many
-SELECT time, token_id, trade_id, price, size, side, maker, taker FROM trades
+SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
 WHERE token_id = $1 AND time >= $2 AND time <= $3
 ORDER BY time DESC
 `
@@ -103,6 +105,7 @@ func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) 
 			&i.Side,
 			&i.Maker,
 			&i.Taker,
+			&i.IngestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -115,19 +118,20 @@ func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) 
 }
 
 const insertTrade = `-- name: InsertTrade :exec
-INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type InsertTradeParams struct {
-	Time    time.Time   `json:"time"`
-	TokenID string      `json:"token_id"`
-	TradeID pgtype.Text `json:"trade_id"`
-	Price   int64       `json:"price"`
-	Size    int64       `json:"size"`
-	Side    string      `json:"side"`
-	Maker   pgtype.Text `json:"maker"`
-	Taker   pgtype.Text `json:"taker"`
+	Time       time.Time   `json:"time"`
+	TokenID    string      `json:"token_id"`
+	TradeID    pgtype.Text `json:"trade_id"`
+	Price      int64       `json:"price"`
+	Size       int64       `json:"size"`
+	Side       string      `json:"side"`
+	Maker      pgtype.Text `json:"maker"`
+	Taker      pgtype.Text `json:"taker"`
+	IngestedAt *time.Time  `json:"ingested_at"`
 }
 
 func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error {
@@ -140,17 +144,19 @@ func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error 
 		arg.Side,
 		arg.Maker,
 		arg.Taker,
+		arg.IngestedAt,
 	)
 	return err
 }
 
 type InsertTradeBatchParams struct {
-	Time    time.Time   `json:"time"`
-	TokenID string      `json:"token_id"`
-	TradeID pgtype.Text `json:"trade_id"`
-	Price   int64       `json:"price"`
-	Size    int64       `json:"size"`
-	Side    string      `json:"side"`
-	Maker   pgtype.Text `json:"maker"`
-	Taker   pgtype.Text `json:"taker"`
+	Time       time.Time   `json:"time"`
+	TokenID    string      `json:"token_id"`
+	TradeID    pgtype.Text `json:"trade_id"`
+	Price      int64       `json:"price"`
+	Size       int64       `json:"size"`
+	Side       string      `json:"side"`
+	Maker      pgtype.Text `json:"maker"`
+	Taker      pgtype.Text `json:"taker"`
+	IngestedAt *time.Time  `json:"ingested_at"`
 }

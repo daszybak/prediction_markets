@@ -43,3 +43,13 @@ func (p *Price) UnmarshalJSON(data []byte) error {
 	*p = Price(res)
 	return nil
 }
+
+func (s *Size) UnmarshalJSON(data []byte) error {
+	// Reuse Price parsing logic since both use same scale.
+	var p Price
+	if err := p.UnmarshalJSON(data); err != nil {
+		return err
+	}
+	*s = Size(p)
+	return nil
+}

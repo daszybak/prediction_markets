@@ -13,7 +13,7 @@ import (
 )
 
 const getLatestOrderBookMetrics = `-- name: GetLatestOrderBookMetrics :one
-SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance FROM order_book_metrics
+SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
 WHERE token_id = $1
 ORDER BY time DESC
 LIMIT 1
@@ -35,12 +35,13 @@ func (q *Queries) GetLatestOrderBookMetrics(ctx context.Context, tokenID string)
 		&i.BidDepth10,
 		&i.AskDepth10,
 		&i.Imbalance,
+		&i.IngestedAt,
 	)
 	return i, err
 }
 
 const getLatestOrderBookSnapshot = `-- name: GetLatestOrderBookSnapshot :many
-SELECT time, token_id, side, level, price, size FROM order_book_snapshots obs
+SELECT time, token_id, side, level, price, size, ingested_at FROM order_book_snapshots obs
 WHERE obs.token_id = $1
 AND obs.time = (SELECT MAX(sub.time) FROM order_book_snapshots sub WHERE sub.token_id = $1)
 ORDER BY obs.side, obs.level
@@ -62,6 +63,7 @@ func (q *Queries) GetLatestOrderBookSnapshot(ctx context.Context, tokenID string
 			&i.Level,
 			&i.Price,
 			&i.Size,
+			&i.IngestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -74,7 +76,7 @@ func (q *Queries) GetLatestOrderBookSnapshot(ctx context.Context, tokenID string
 }
 
 const getOrderBookMetricsRange = `-- name: GetOrderBookMetricsRange :many
-SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance FROM order_book_metrics
+SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
 WHERE token_id = $1 AND time >= $2 AND time <= $3
 ORDER BY time DESC
 `
@@ -107,6 +109,7 @@ func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBook
 			&i.BidDepth10,
 			&i.AskDepth10,
 			&i.Imbalance,
+			&i.IngestedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -121,9 +124,9 @@ func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBook
 const insertOrderBookMetrics = `-- name: InsertOrderBookMetrics :exec
 INSERT INTO order_book_metrics (
     time, token_id, mid_price, best_bid, best_ask, spread, spread_bps,
-    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance
+    bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type InsertOrderBookMetricsParams struct {
@@ -139,6 +142,7 @@ type InsertOrderBookMetricsParams struct {
 	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
 	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
 	Imbalance  pgtype.Int2 `json:"imbalance"`
+	IngestedAt *time.Time  `json:"ingested_at"`
 }
 
 func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBookMetricsParams) error {
@@ -155,6 +159,7 @@ func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBoo
 		arg.BidDepth10,
 		arg.AskDepth10,
 		arg.Imbalance,
+		arg.IngestedAt,
 	)
 	return err
 }
@@ -172,20 +177,22 @@ type InsertOrderBookMetricsBatchParams struct {
 	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
 	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
 	Imbalance  pgtype.Int2 `json:"imbalance"`
+	IngestedAt *time.Time  `json:"ingested_at"`
 }
 
 const insertOrderBookSnapshot = `-- name: InsertOrderBookSnapshot :exec
-INSERT INTO order_book_snapshots (time, token_id, side, level, price, size)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO order_book_snapshots (time, token_id, side, level, price, size, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertOrderBookSnapshotParams struct {
-	Time    time.Time `json:"time"`
-	TokenID string    `json:"token_id"`
-	Side    string    `json:"side"`
-	Level   int16     `json:"level"`
-	Price   int64     `json:"price"`
-	Size    int64     `json:"size"`
+	Time       time.Time  `json:"time"`
+	TokenID    string     `json:"token_id"`
+	Side       string     `json:"side"`
+	Level      int16      `json:"level"`
+	Price      int64      `json:"price"`
+	Size       int64      `json:"size"`
+	IngestedAt *time.Time `json:"ingested_at"`
 }
 
 func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBookSnapshotParams) error {
@@ -196,15 +203,17 @@ func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBo
 		arg.Level,
 		arg.Price,
 		arg.Size,
+		arg.IngestedAt,
 	)
 	return err
 }
 
 type InsertOrderBookSnapshotBatchParams struct {
-	Time    time.Time `json:"time"`
-	TokenID string    `json:"token_id"`
-	Side    string    `json:"side"`
-	Level   int16     `json:"level"`
-	Price   int64     `json:"price"`
-	Size    int64     `json:"size"`
+	Time       time.Time  `json:"time"`
+	TokenID    string     `json:"token_id"`
+	Side       string     `json:"side"`
+	Level      int16      `json:"level"`
+	Price      int64      `json:"price"`
+	Size       int64      `json:"size"`
+	IngestedAt *time.Time `json:"ingested_at"`
 }

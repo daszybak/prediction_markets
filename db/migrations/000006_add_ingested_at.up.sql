@@ -3,17 +3,20 @@
 -- `ingested_at` = ingestion time (when we stored it)
 -- Latency = ingested_at - time
 
+-- Note: TimescaleDB hypertables with columnstore don't support DEFAULT NOW()
+-- The application must provide ingested_at explicitly on insert.
+
 -- Order book snapshots
 ALTER TABLE order_book_snapshots
-ADD COLUMN ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ADD COLUMN ingested_at TIMESTAMPTZ;
 
 -- Trades
 ALTER TABLE trades
-ADD COLUMN ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ADD COLUMN ingested_at TIMESTAMPTZ;
 
 -- Order book metrics
 ALTER TABLE order_book_metrics
-ADD COLUMN ingested_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ADD COLUMN ingested_at TIMESTAMPTZ;
 
 -- Add comments for clarity
 COMMENT ON COLUMN order_book_snapshots.time IS 'Event time from source API';

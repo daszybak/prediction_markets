@@ -63,13 +63,13 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 				eventTime = now
 			}
 			params = append(params, store.InsertOrderBookSnapshotBatchParams{
-				Time:    eventTime, // Event time from source API
-				TokenID: snap.TokenID,
-				Side:    "bid",
-				Level:   int16(level),
-				Price:   int64(bid.Price),
-				Size:    int64(bid.Size),
-				// ingested_at uses DB default NOW()
+				Time:       eventTime, // Event time from source API
+				TokenID:    snap.TokenID,
+				Side:       "bid",
+				Level:      int16(level),
+				Price:      int64(bid.Price),
+				Size:       int64(bid.Size),
+				IngestedAt: &now, // When we stored it
 			})
 		}
 		for level, ask := range snap.Asks {
@@ -78,13 +78,13 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 				eventTime = now
 			}
 			params = append(params, store.InsertOrderBookSnapshotBatchParams{
-				Time:    eventTime, // Event time from source API
-				TokenID: snap.TokenID,
-				Side:    "ask",
-				Level:   int16(level),
-				Price:   int64(ask.Price),
-				Size:    int64(ask.Size),
-				// ingested_at uses DB default NOW()
+				Time:       eventTime, // Event time from source API
+				TokenID:    snap.TokenID,
+				Side:       "ask",
+				Level:      int16(level),
+				Price:      int64(ask.Price),
+				Size:       int64(ask.Size),
+				IngestedAt: &now, // When we stored it
 			})
 		}
 	}

@@ -41,6 +41,7 @@ func (r iteratorForInsertOrderBookMetricsBatch) Values() ([]interface{}, error) 
 		r.rows[0].BidDepth10,
 		r.rows[0].AskDepth10,
 		r.rows[0].Imbalance,
+		r.rows[0].IngestedAt,
 	}, nil
 }
 
@@ -49,7 +50,7 @@ func (r iteratorForInsertOrderBookMetricsBatch) Err() error {
 }
 
 func (q *Queries) InsertOrderBookMetricsBatch(ctx context.Context, arg []InsertOrderBookMetricsBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"order_book_metrics"}, []string{"time", "token_id", "mid_price", "best_bid", "best_ask", "spread", "spread_bps", "bid_depth_5", "ask_depth_5", "bid_depth_10", "ask_depth_10", "imbalance"}, &iteratorForInsertOrderBookMetricsBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"order_book_metrics"}, []string{"time", "token_id", "mid_price", "best_bid", "best_ask", "spread", "spread_bps", "bid_depth_5", "ask_depth_5", "bid_depth_10", "ask_depth_10", "imbalance", "ingested_at"}, &iteratorForInsertOrderBookMetricsBatch{rows: arg})
 }
 
 // iteratorForInsertOrderBookSnapshotBatch implements pgx.CopyFromSource.
@@ -78,6 +79,7 @@ func (r iteratorForInsertOrderBookSnapshotBatch) Values() ([]interface{}, error)
 		r.rows[0].Level,
 		r.rows[0].Price,
 		r.rows[0].Size,
+		r.rows[0].IngestedAt,
 	}, nil
 }
 
@@ -86,7 +88,7 @@ func (r iteratorForInsertOrderBookSnapshotBatch) Err() error {
 }
 
 func (q *Queries) InsertOrderBookSnapshotBatch(ctx context.Context, arg []InsertOrderBookSnapshotBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"order_book_snapshots"}, []string{"time", "token_id", "side", "level", "price", "size"}, &iteratorForInsertOrderBookSnapshotBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"order_book_snapshots"}, []string{"time", "token_id", "side", "level", "price", "size", "ingested_at"}, &iteratorForInsertOrderBookSnapshotBatch{rows: arg})
 }
 
 // iteratorForInsertTradeBatch implements pgx.CopyFromSource.
@@ -117,6 +119,7 @@ func (r iteratorForInsertTradeBatch) Values() ([]interface{}, error) {
 		r.rows[0].Side,
 		r.rows[0].Maker,
 		r.rows[0].Taker,
+		r.rows[0].IngestedAt,
 	}, nil
 }
 
@@ -125,5 +128,5 @@ func (r iteratorForInsertTradeBatch) Err() error {
 }
 
 func (q *Queries) InsertTradeBatch(ctx context.Context, arg []InsertTradeBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"trades"}, []string{"time", "token_id", "trade_id", "price", "size", "side", "maker", "taker"}, &iteratorForInsertTradeBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"trades"}, []string{"time", "token_id", "trade_id", "price", "size", "side", "maker", "taker", "ingested_at"}, &iteratorForInsertTradeBatch{rows: arg})
 }

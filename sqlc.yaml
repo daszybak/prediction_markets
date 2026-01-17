@@ -14,8 +14,16 @@ sql:
           # Use time.Time instead of pgtype.Timestamptz
           - db_type: "timestamptz"
             go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              type: "*time.Time"
           - db_type: "timestamp"
             go_type: "time.Time"
+          - db_type: "timestamp"
+            nullable: true
+            go_type:
+              type: "*time.Time"
           # pgvector support
           - db_type: "vector"
             go_type:

@@ -38,6 +38,7 @@
 - [x] Token subscription to websocket
 - [x] Platform Start/Stop lifecycle
 - [x] Structured logging with slog
+- [x] Engine integration (`handleBook`, `handlePriceChange` → `engine.Send`)
 
 ### Database & Store (`internal/store/`)
 
@@ -79,7 +80,7 @@
 
 ### Polymarket WebSocket → Engine
 
-- [ ] Route parsed messages to Engine
+- [x] Route parsed messages to Engine (`handleBook`, `handlePriceChange` → `engine.Send`)
 - [ ] Reconnection logic with exponential backoff
 
 ### TimescaleDB Continuous Aggregates
