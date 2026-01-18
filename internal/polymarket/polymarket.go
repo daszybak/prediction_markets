@@ -258,6 +258,8 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 	return nil
 }
 
+// TODO Currently we start listening to liquid markets and we fetch them from 
+// Gamma Service. We should rethink this in the future when we create strategies.
 // getLiquidTokenIDs returns token IDs for markets with liquidity >= minLiquidity.
 func (p *Polymarket) getLiquidTokenIDs() ([]string, error) {
 	markets, err := p.gamma.GetMarkets(p.config.MinLiquidity)
