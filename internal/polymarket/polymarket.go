@@ -47,12 +47,12 @@ type Polymarket struct {
 // New creates a Polymarket client. Call Start() to connect.
 func New(cfg Config, s *store.Store, eng *engine.Client, log *slog.Logger) *Polymarket {
 	return &Polymarket{
-		config: cfg,
-		store:  s,
-		engine: eng,
-		log:    log,
-		clob:   clob.New(cfg.ClobURL),
-		gamma:  gamma.New(cfg.GammaURL),
+		config:           cfg,
+		store:            s,
+		engine:           eng,
+		log:              log,
+		clob:             clob.New(cfg.ClobURL),
+		gamma:            gamma.New(cfg.GammaURL),
 		subscribedTokens: hashset.NewSet[string](),
 	}
 }
@@ -118,26 +118,26 @@ func (p *Polymarket) handleBook(book *websocket.Book, ingestedAt time.Time) {
 	// Process bids.
 	for _, order := range book.Bids {
 		p.engine.Send(engine.Update{
-			TokenID:   book.AssetID,
-			Price:     order.Price,
-			Size:      order.Size,
-			Side:      "bids",
-			EventTime: eventTime,
+			TokenID:    book.AssetID,
+			Price:      order.Price,
+			Size:       order.Size,
+			Side:       "bids",
+			EventTime:  eventTime,
 			IngestedAt: ingestedAt,
-			IsDelta:   false,
+			IsDelta:    false,
 		})
 	}
 
 	// Process asks.
 	for _, order := range book.Asks {
 		p.engine.Send(engine.Update{
-			TokenID:   book.AssetID,
-			Price:     order.Price,
-			Size:      order.Size,
-			Side:      "asks",
-			EventTime: eventTime,
+			TokenID:    book.AssetID,
+			Price:      order.Price,
+			Size:       order.Size,
+			Side:       "asks",
+			EventTime:  eventTime,
 			IngestedAt: ingestedAt,
-			IsDelta:   false,
+			IsDelta:    false,
 		})
 	}
 
@@ -152,13 +152,13 @@ func (p *Polymarket) handlePriceChange(pCM *websocket.PriceChangeMessage, ingest
 		}
 
 		p.engine.Send(engine.Update{
-			TokenID:   pC.AssetID,
-			Price:     pC.Price,
-			Size:      pC.Size,
-			Side:      side,
-			EventTime: pCM.Timestamp.Time(),
+			TokenID:    pC.AssetID,
+			Price:      pC.Price,
+			Size:       pC.Size,
+			Side:       side,
+			EventTime:  pCM.Timestamp.Time(),
 			IngestedAt: ingestedAt,
-			IsDelta:   false,
+			IsDelta:    false,
 		})
 	}
 }

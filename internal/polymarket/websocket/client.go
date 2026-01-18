@@ -167,15 +167,15 @@ func (c *Client) ReadMessage(ctx context.Context) (*Message, error) {
 type Message struct {
 	EventType string `json:"event_type"`
 	// TODO Read ReceivedAt from NIC hardware timestamp for accurate latency measurement.
-	ReceivedAt time.Time
-	Book       *Book
-	Books          []Book // For batch responses (initial dump)
-	PriceChangeMessage    *PriceChangeMessage
-	BestBidAsk     *BestBidAsk
-	TickSizeChange *TickSizeChange
-	LastTradePrice *LastTradePrice
-	NewMarket      *NewMarket
-	MarketResolved *MarketResolved
+	ReceivedAt         time.Time
+	Book               *Book
+	Books              []Book // For batch responses (initial dump)
+	PriceChangeMessage *PriceChangeMessage
+	BestBidAsk         *BestBidAsk
+	TickSizeChange     *TickSizeChange
+	LastTradePrice     *LastTradePrice
+	NewMarket          *NewMarket
+	MarketResolved     *MarketResolved
 }
 
 type Book struct {

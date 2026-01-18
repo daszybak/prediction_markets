@@ -26,19 +26,19 @@ type Client struct {
 }
 
 type OrderbookWorker struct {
-	ob *orderbook.Orderbook
+	ob      *orderbook.Orderbook
 	updates chan Update
-	logger *slog.Logger
+	logger  *slog.Logger
 }
 
 type Update struct {
-	Price     price.Price
-	Size      price.Size
-	TokenID   string
-	Side      string
-	EventTime time.Time 
+	Price      price.Price
+	Size       price.Size
+	TokenID    string
+	Side       string
+	EventTime  time.Time
 	IngestedAt time.Time
-	IsDelta   bool      // true = delta update, false = absolute set
+	IsDelta    bool // true = delta update, false = absolute set
 }
 
 type Level struct {
