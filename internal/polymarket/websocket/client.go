@@ -165,9 +165,10 @@ func (c *Client) ReadMessage(ctx context.Context) (*Message, error) {
 }
 
 type Message struct {
-	EventType      string `json:"event_type"`
-	Received       time.Time
-	Book           *Book
+	EventType string `json:"event_type"`
+	// TODO Read ReceivedAt from NIC hardware timestamp for accurate latency measurement.
+	ReceivedAt time.Time
+	Book       *Book
 	Books          []Book // For batch responses (initial dump)
 	PriceChangeMessage    *PriceChangeMessage
 	BestBidAsk     *BestBidAsk
@@ -275,7 +276,7 @@ const (
 
 func (c *Client) ParseMessage(rawMsg []byte) (*Message, error) {
 	msg := &Message{
-		Received: time.Now(),
+		ReceivedAt: time.Now(),
 	}
 
 	// Check if message is an array (initial dump after subscribing).

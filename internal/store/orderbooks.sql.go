@@ -13,9 +13,9 @@ import (
 )
 
 const getLatestOrderBookMetrics = `-- name: GetLatestOrderBookMetrics :one
-SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
+SELECT event_time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
 WHERE token_id = $1
-ORDER BY time DESC
+ORDER BY event_time DESC
 LIMIT 1
 `
 
@@ -23,7 +23,7 @@ func (q *Queries) GetLatestOrderBookMetrics(ctx context.Context, tokenID string)
 	row := q.db.QueryRow(ctx, getLatestOrderBookMetrics, tokenID)
 	var i OrderBookMetric
 	err := row.Scan(
-		&i.Time,
+		&i.EventTime,
 		&i.TokenID,
 		&i.MidPrice,
 		&i.BestBid,
@@ -41,9 +41,9 @@ func (q *Queries) GetLatestOrderBookMetrics(ctx context.Context, tokenID string)
 }
 
 const getLatestOrderBookSnapshot = `-- name: GetLatestOrderBookSnapshot :many
-SELECT time, token_id, side, level, price, size, ingested_at FROM order_book_snapshots obs
+SELECT event_time, token_id, side, level, price, size, ingested_at FROM order_book_snapshots obs
 WHERE obs.token_id = $1
-AND obs.time = (SELECT MAX(sub.time) FROM order_book_snapshots sub WHERE sub.token_id = $1)
+AND obs.event_time = (SELECT MAX(sub.event_time) FROM order_book_snapshots sub WHERE sub.token_id = $1)
 ORDER BY obs.side, obs.level
 `
 
@@ -57,7 +57,7 @@ func (q *Queries) GetLatestOrderBookSnapshot(ctx context.Context, tokenID string
 	for rows.Next() {
 		var i OrderBookSnapshot
 		if err := rows.Scan(
-			&i.Time,
+			&i.EventTime,
 			&i.TokenID,
 			&i.Side,
 			&i.Level,
@@ -76,19 +76,19 @@ func (q *Queries) GetLatestOrderBookSnapshot(ctx context.Context, tokenID string
 }
 
 const getOrderBookMetricsRange = `-- name: GetOrderBookMetricsRange :many
-SELECT time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
-WHERE token_id = $1 AND time >= $2 AND time <= $3
-ORDER BY time DESC
+SELECT event_time, token_id, mid_price, best_bid, best_ask, spread, spread_bps, bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at FROM order_book_metrics
+WHERE token_id = $1 AND event_time >= $2 AND event_time <= $3
+ORDER BY event_time DESC
 `
 
 type GetOrderBookMetricsRangeParams struct {
-	TokenID string    `json:"token_id"`
-	Time    time.Time `json:"time"`
-	Time_2  time.Time `json:"time_2"`
+	TokenID     string    `json:"token_id"`
+	EventTime   time.Time `json:"event_time"`
+	EventTime_2 time.Time `json:"event_time_2"`
 }
 
 func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBookMetricsRangeParams) ([]OrderBookMetric, error) {
-	rows, err := q.db.Query(ctx, getOrderBookMetricsRange, arg.TokenID, arg.Time, arg.Time_2)
+	rows, err := q.db.Query(ctx, getOrderBookMetricsRange, arg.TokenID, arg.EventTime, arg.EventTime_2)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBook
 	for rows.Next() {
 		var i OrderBookMetric
 		if err := rows.Scan(
-			&i.Time,
+			&i.EventTime,
 			&i.TokenID,
 			&i.MidPrice,
 			&i.BestBid,
@@ -123,14 +123,14 @@ func (q *Queries) GetOrderBookMetricsRange(ctx context.Context, arg GetOrderBook
 
 const insertOrderBookMetrics = `-- name: InsertOrderBookMetrics :exec
 INSERT INTO order_book_metrics (
-    time, token_id, mid_price, best_bid, best_ask, spread, spread_bps,
+    event_time, token_id, mid_price, best_bid, best_ask, spread, spread_bps,
     bid_depth_5, ask_depth_5, bid_depth_10, ask_depth_10, imbalance, ingested_at
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type InsertOrderBookMetricsParams struct {
-	Time       time.Time   `json:"time"`
+	EventTime  time.Time   `json:"event_time"`
 	TokenID    string      `json:"token_id"`
 	MidPrice   pgtype.Int8 `json:"mid_price"`
 	BestBid    pgtype.Int8 `json:"best_bid"`
@@ -147,7 +147,7 @@ type InsertOrderBookMetricsParams struct {
 
 func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBookMetricsParams) error {
 	_, err := q.db.Exec(ctx, insertOrderBookMetrics,
-		arg.Time,
+		arg.EventTime,
 		arg.TokenID,
 		arg.MidPrice,
 		arg.BestBid,
@@ -165,7 +165,7 @@ func (q *Queries) InsertOrderBookMetrics(ctx context.Context, arg InsertOrderBoo
 }
 
 type InsertOrderBookMetricsBatchParams struct {
-	Time       time.Time   `json:"time"`
+	EventTime  time.Time   `json:"event_time"`
 	TokenID    string      `json:"token_id"`
 	MidPrice   pgtype.Int8 `json:"mid_price"`
 	BestBid    pgtype.Int8 `json:"best_bid"`
@@ -181,12 +181,12 @@ type InsertOrderBookMetricsBatchParams struct {
 }
 
 const insertOrderBookSnapshot = `-- name: InsertOrderBookSnapshot :exec
-INSERT INTO order_book_snapshots (time, token_id, side, level, price, size, ingested_at)
+INSERT INTO order_book_snapshots (event_time, token_id, side, level, price, size, ingested_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertOrderBookSnapshotParams struct {
-	Time       time.Time  `json:"time"`
+	EventTime  time.Time  `json:"event_time"`
 	TokenID    string     `json:"token_id"`
 	Side       string     `json:"side"`
 	Level      int16      `json:"level"`
@@ -197,7 +197,7 @@ type InsertOrderBookSnapshotParams struct {
 
 func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBookSnapshotParams) error {
 	_, err := q.db.Exec(ctx, insertOrderBookSnapshot,
-		arg.Time,
+		arg.EventTime,
 		arg.TokenID,
 		arg.Side,
 		arg.Level,
@@ -209,7 +209,7 @@ func (q *Queries) InsertOrderBookSnapshot(ctx context.Context, arg InsertOrderBo
 }
 
 type InsertOrderBookSnapshotBatchParams struct {
-	Time       time.Time  `json:"time"`
+	EventTime  time.Time  `json:"event_time"`
 	TokenID    string     `json:"token_id"`
 	Side       string     `json:"side"`
 	Level      int16      `json:"level"`

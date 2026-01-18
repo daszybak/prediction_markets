@@ -12,9 +12,9 @@ import (
 
 // Level represents a price level in the order book.
 type Level struct {
-	Price     price.Price
-	Size      price.Size
-	UpdatedAt time.Time // When this level was last updated (event time from source)
+	Price      price.Price
+	Size       price.Size
+	EventTime  time.Time // When this event occurred at source
 	IngestedAt time.Time // When this level was ingested by the system
 }
 
@@ -58,7 +58,7 @@ func (ob *Orderbook) Set(p price.Price, size price.Size, side string, eventTime 
 		return nil
 	}
 
-	tree.ReplaceOrInsert(Level{Price: p, Size: size, UpdatedAt: eventTime, IngestedAt: ingestedAt})
+	tree.ReplaceOrInsert(Level{Price: p, Size: size, EventTime: eventTime, IngestedAt: ingestedAt})
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (ob *Orderbook) Update(p price.Price, delta price.Size, side string, eventT
 		return nil
 	}
 
-	tree.ReplaceOrInsert(Level{Price: p, Size: newSize, UpdatedAt: eventTime, IngestedAt: ingestedAt})
+	tree.ReplaceOrInsert(Level{Price: p, Size: newSize, EventTime: eventTime, IngestedAt: ingestedAt})
 	return nil
 }
 

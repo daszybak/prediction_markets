@@ -21,7 +21,7 @@
 - [x] Periodic snapshot ticker (configurable interval)
 - [x] Batch insert via `InsertOrderBookSnapshotBatch` (COPY protocol)
 - [x] Configurable snapshot depth (top N levels per side)
-- [x] Event time tracking per level (`UpdatedAt` from source API)
+- [x] Event time tracking per level (`EventTime` from source API)
 
 ### Polymarket Platform (`internal/polymarket/`)
 
@@ -165,29 +165,28 @@ Redis would only help if:
 ### TimescaleDB Snapshot Strategy
 
 Two timestamps per row for latency analysis:
-- `time` = event time (when data was generated at source API)
-- `ingested_at` = ingestion time (when we stored it, defaults to NOW())
-- Latency = `ingested_at - time`
+- `event_time` = when event occurred at source API (Polymarket timestamp)
+- `ingested_at` = when we received the data from WebSocket
+- Latency = `ingested_at - event_time`
 
 ```sql
 -- Periodic snapshots with event time from source
-INSERT INTO order_book_snapshots (time, token_id, side, level, price, size)
-VALUES ($1, $2, $3, $4, $5, $6);
--- ingested_at column uses DEFAULT NOW()
+INSERT INTO order_book_snapshots (event_time, token_id, side, level, price, size, ingested_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- Query latency distribution
 SELECT
     token_id,
-    avg(ingested_at - time) as avg_latency,
-    percentile_cont(0.99) WITHIN GROUP (ORDER BY ingested_at - time) as p99_latency
+    avg(ingested_at - event_time) as avg_latency,
+    percentile_cont(0.99) WITHIN GROUP (ORDER BY ingested_at - event_time) as p99_latency
 FROM order_book_snapshots
-WHERE time > NOW() - INTERVAL '1 hour'
+WHERE event_time > NOW() - INTERVAL '1 hour'
 GROUP BY token_id;
 
 -- Continuous aggregate refreshes automatically
 CREATE MATERIALIZED VIEW order_book_1m
 WITH (timescaledb.continuous) AS
-SELECT time_bucket('1 minute', time), token_id, ...
+SELECT time_bucket('1 minute', event_time), token_id, ...
 FROM order_book_snapshots
 GROUP BY 1, 2;
 ```

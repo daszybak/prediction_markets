@@ -261,24 +261,25 @@ Order book snapshots use TimescaleDB hypertables with continuous aggregates:
 ```sql
 -- Raw snapshots (every N seconds)
 CREATE TABLE order_book_snapshots (
-    time        TIMESTAMPTZ NOT NULL,
+    event_time  TIMESTAMPTZ NOT NULL,  -- When event occurred at source
     token_id    TEXT NOT NULL,
     side        TEXT NOT NULL,
     price       BIGINT NOT NULL,
-    size        BIGINT NOT NULL
+    size        BIGINT NOT NULL,
+    ingested_at TIMESTAMPTZ            -- When we received from WebSocket
 );
-SELECT create_hypertable('order_book_snapshots', 'time');
+SELECT create_hypertable('order_book_snapshots', 'event_time');
 
 -- Continuous aggregate for OHLC (auto-refreshed)
 CREATE MATERIALIZED VIEW order_book_1m
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('1 minute', time) AS bucket,
+    time_bucket('1 minute', event_time) AS bucket,
     token_id,
-    first(price, time) as open,
+    first(price, event_time) as open,
     max(price) as high,
     min(price) as low,
-    last(price, time) as close,
+    last(price, event_time) as close,
     sum(size) as volume
 FROM order_book_snapshots
 WHERE side = 'bids'

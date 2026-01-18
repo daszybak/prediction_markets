@@ -769,13 +769,14 @@ async def process_news_item(article: NewsArticle):
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `time` | TIMESTAMPTZ | Timestamp (partitioned) |
+| `event_time` | TIMESTAMPTZ | When event occurred at source (partitioned) |
 | `market_id` | UUID | FK to markets |
 | `outcome` | TEXT | Which outcome |
 | `price` | DECIMAL | Price (0.00-1.00) |
 | `volume` | DECIMAL | Trade volume |
 | `bid` | DECIMAL | Best bid |
 | `ask` | DECIMAL | Best ask |
+| `ingested_at` | TIMESTAMPTZ | When we received from WebSocket |
 
 ## Prediction Market Fundamentals
 
@@ -1842,10 +1843,10 @@ import pandas as pd
 
 # Get price history for a market
 df = pd.read_sql("""
-    SELECT time, price, volume
+    SELECT event_time, price, volume
     FROM prices
     WHERE market_id = %s
-    ORDER BY time
+    ORDER BY event_time
 """, engine, params=[market_id])
 ```
 

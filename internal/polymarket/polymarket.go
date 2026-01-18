@@ -92,14 +92,14 @@ func (p *Polymarket) Start(ctx context.Context) error {
 func (p *Polymarket) processMessage(msg *websocket.Message) {
 	switch msg.EventType {
 	case websocket.BookEvent:
-		p.handleBook(msg.Book, msg.Received)
+		p.handleBook(msg.Book, msg.ReceivedAt)
 	case websocket.BookBatchEvent:
 		for i := range msg.Books {
-			p.handleBook(&msg.Books[i], msg.Received)
+			p.handleBook(&msg.Books[i], msg.ReceivedAt)
 		}
 		p.log.Info("processed initial book dump", "count", len(msg.Books))
 	case websocket.PriceChangeEvent:
-		p.handlePriceChange(msg.PriceChangeMessage, msg.Received)
+		p.handlePriceChange(msg.PriceChangeMessage, msg.ReceivedAt)
 	default:
 		p.log.Debug("not handling message event type", "event_type", msg.EventType)
 	}

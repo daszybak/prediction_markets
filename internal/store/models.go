@@ -65,8 +65,8 @@ type NewsMarketLink struct {
 }
 
 type OrderBookMetric struct {
-	// Event time from source API
-	Time       time.Time   `json:"time"`
+	// When event occurred at source API
+	EventTime  time.Time   `json:"event_time"`
 	TokenID    string      `json:"token_id"`
 	MidPrice   pgtype.Int8 `json:"mid_price"`
 	BestBid    pgtype.Int8 `json:"best_bid"`
@@ -78,19 +78,19 @@ type OrderBookMetric struct {
 	BidDepth10 pgtype.Int8 `json:"bid_depth_10"`
 	AskDepth10 pgtype.Int8 `json:"ask_depth_10"`
 	Imbalance  pgtype.Int2 `json:"imbalance"`
-	// When data was stored in our DB
+	// When data was received from WebSocket
 	IngestedAt *time.Time `json:"ingested_at"`
 }
 
 type OrderBookSnapshot struct {
-	// Event time from source API
-	Time    time.Time `json:"time"`
-	TokenID string    `json:"token_id"`
-	Side    string    `json:"side"`
-	Level   int16     `json:"level"`
-	Price   int64     `json:"price"`
-	Size    int64     `json:"size"`
-	// When data was stored in our DB
+	// When event occurred at source API
+	EventTime time.Time `json:"event_time"`
+	TokenID   string    `json:"token_id"`
+	Side      string    `json:"side"`
+	Level     int16     `json:"level"`
+	Price     int64     `json:"price"`
+	Size      int64     `json:"size"`
+	// When data was received from WebSocket
 	IngestedAt *time.Time `json:"ingested_at"`
 }
 
@@ -152,15 +152,15 @@ type Token struct {
 }
 
 type Trade struct {
-	// Event time from source API
-	Time    time.Time   `json:"time"`
-	TokenID string      `json:"token_id"`
-	TradeID pgtype.Text `json:"trade_id"`
-	Price   int64       `json:"price"`
-	Size    int64       `json:"size"`
-	Side    string      `json:"side"`
-	Maker   pgtype.Text `json:"maker"`
-	Taker   pgtype.Text `json:"taker"`
-	// When data was stored in our DB
+	// When event occurred at source API
+	EventTime time.Time   `json:"event_time"`
+	TokenID   string      `json:"token_id"`
+	TradeID   pgtype.Text `json:"trade_id"`
+	Price     int64       `json:"price"`
+	Size      int64       `json:"size"`
+	Side      string      `json:"side"`
+	Maker     pgtype.Text `json:"maker"`
+	Taker     pgtype.Text `json:"taker"`
+	// When data was received from WebSocket
 	IngestedAt *time.Time `json:"ingested_at"`
 }

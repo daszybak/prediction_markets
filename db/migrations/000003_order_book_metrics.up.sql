@@ -1,7 +1,7 @@
 -- Order book metrics (aggregated, more useful for analysis)
 -- Prices/sizes stored as BIGINT with scale 10^6 (e.g., 0.75 = 750000)
 CREATE TABLE IF NOT EXISTS order_book_metrics (
-    time            TIMESTAMPTZ NOT NULL,
+    event_time      TIMESTAMPTZ NOT NULL,
     token_id        TEXT NOT NULL,
     mid_price       BIGINT,             -- scale 10^6
     best_bid        BIGINT,             -- scale 10^6
@@ -16,16 +16,16 @@ CREATE TABLE IF NOT EXISTS order_book_metrics (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('order_book_metrics', 'time');
+SELECT create_hypertable('order_book_metrics', 'event_time');
 
 -- Indexes
-CREATE INDEX idx_obm_token_time ON order_book_metrics(token_id, time DESC);
+CREATE INDEX idx_obm_token_time ON order_book_metrics(token_id, event_time DESC);
 
 -- Enable compression after 7 days
 ALTER TABLE order_book_metrics SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'token_id',
-    timescaledb.compress_orderby = 'time DESC'
+    timescaledb.compress_orderby = 'event_time DESC'
 );
 
 SELECT add_compression_policy('order_book_metrics', INTERVAL '7 days');

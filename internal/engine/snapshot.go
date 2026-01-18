@@ -58,13 +58,13 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 
 	for _, snap := range snapshots {
 		for level, bid := range snap.Bids {
-			// Use level's UpdatedAt as event time, fall back to now if not set.
-			eventTime := bid.UpdatedAt
+			// Use level's EventTime, fall back to now if not set.
+			eventTime := bid.EventTime
 			if eventTime.IsZero() {
 				eventTime = now
 			}
 			params = append(params, store.InsertOrderBookSnapshotBatchParams{
-				Time:       eventTime, // Event time from source API
+				EventTime:  eventTime,
 				TokenID:    snap.TokenID,
 				Side:       "bid",
 				Level:      int16(level),
@@ -74,12 +74,12 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 			})
 		}
 		for level, ask := range snap.Asks {
-			eventTime := ask.UpdatedAt
+			eventTime := ask.EventTime
 			if eventTime.IsZero() {
 				eventTime = now
 			}
 			params = append(params, store.InsertOrderBookSnapshotBatchParams{
-				Time:       eventTime, // Event time from source API
+				EventTime:  eventTime,
 				TokenID:    snap.TokenID,
 				Side:       "ask",
 				Level:      int16(level),

@@ -5,13 +5,13 @@
 CREATE MATERIALIZED VIEW order_book_snapshots_1m
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('1 minute', time) AS bucket,
+    time_bucket('1 minute', event_time) AS bucket,
     token_id,
     side,
-    first(price, time) AS open_price,
+    first(price, event_time) AS open_price,
     max(price) AS high_price,
     min(price) AS low_price,
-    last(price, time) AS close_price,
+    last(price, event_time) AS close_price,
     sum(size) AS total_size,
     count(*) AS num_updates
 FROM order_book_snapshots
@@ -22,13 +22,13 @@ WITH NO DATA;
 CREATE MATERIALIZED VIEW order_book_snapshots_5m
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('5 minutes', time) AS bucket,
+    time_bucket('5 minutes', event_time) AS bucket,
     token_id,
     side,
-    first(price, time) AS open_price,
+    first(price, event_time) AS open_price,
     max(price) AS high_price,
     min(price) AS low_price,
-    last(price, time) AS close_price,
+    last(price, event_time) AS close_price,
     sum(size) AS total_size,
     count(*) AS num_updates
 FROM order_book_snapshots
@@ -39,13 +39,13 @@ WITH NO DATA;
 CREATE MATERIALIZED VIEW order_book_snapshots_1h
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('1 hour', time) AS bucket,
+    time_bucket('1 hour', event_time) AS bucket,
     token_id,
     side,
-    first(price, time) AS open_price,
+    first(price, event_time) AS open_price,
     max(price) AS high_price,
     min(price) AS low_price,
-    last(price, time) AS close_price,
+    last(price, event_time) AS close_price,
     sum(size) AS total_size,
     count(*) AS num_updates
 FROM order_book_snapshots
@@ -56,13 +56,13 @@ WITH NO DATA;
 CREATE MATERIALIZED VIEW order_book_snapshots_1d
 WITH (timescaledb.continuous) AS
 SELECT
-    time_bucket('1 day', time) AS bucket,
+    time_bucket('1 day', event_time) AS bucket,
     token_id,
     side,
-    first(price, time) AS open_price,
+    first(price, event_time) AS open_price,
     max(price) AS high_price,
     min(price) AS low_price,
-    last(price, time) AS close_price,
+    last(price, event_time) AS close_price,
     sum(size) AS total_size,
     count(*) AS num_updates
 FROM order_book_snapshots

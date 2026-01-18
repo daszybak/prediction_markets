@@ -29,7 +29,7 @@ func (r *iteratorForInsertOrderBookMetricsBatch) Next() bool {
 
 func (r iteratorForInsertOrderBookMetricsBatch) Values() ([]interface{}, error) {
 	return []interface{}{
-		r.rows[0].Time,
+		r.rows[0].EventTime,
 		r.rows[0].TokenID,
 		r.rows[0].MidPrice,
 		r.rows[0].BestBid,
@@ -50,7 +50,7 @@ func (r iteratorForInsertOrderBookMetricsBatch) Err() error {
 }
 
 func (q *Queries) InsertOrderBookMetricsBatch(ctx context.Context, arg []InsertOrderBookMetricsBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"order_book_metrics"}, []string{"time", "token_id", "mid_price", "best_bid", "best_ask", "spread", "spread_bps", "bid_depth_5", "ask_depth_5", "bid_depth_10", "ask_depth_10", "imbalance", "ingested_at"}, &iteratorForInsertOrderBookMetricsBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"order_book_metrics"}, []string{"event_time", "token_id", "mid_price", "best_bid", "best_ask", "spread", "spread_bps", "bid_depth_5", "ask_depth_5", "bid_depth_10", "ask_depth_10", "imbalance", "ingested_at"}, &iteratorForInsertOrderBookMetricsBatch{rows: arg})
 }
 
 // iteratorForInsertOrderBookSnapshotBatch implements pgx.CopyFromSource.
@@ -73,7 +73,7 @@ func (r *iteratorForInsertOrderBookSnapshotBatch) Next() bool {
 
 func (r iteratorForInsertOrderBookSnapshotBatch) Values() ([]interface{}, error) {
 	return []interface{}{
-		r.rows[0].Time,
+		r.rows[0].EventTime,
 		r.rows[0].TokenID,
 		r.rows[0].Side,
 		r.rows[0].Level,
@@ -88,7 +88,7 @@ func (r iteratorForInsertOrderBookSnapshotBatch) Err() error {
 }
 
 func (q *Queries) InsertOrderBookSnapshotBatch(ctx context.Context, arg []InsertOrderBookSnapshotBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"order_book_snapshots"}, []string{"time", "token_id", "side", "level", "price", "size", "ingested_at"}, &iteratorForInsertOrderBookSnapshotBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"order_book_snapshots"}, []string{"event_time", "token_id", "side", "level", "price", "size", "ingested_at"}, &iteratorForInsertOrderBookSnapshotBatch{rows: arg})
 }
 
 // iteratorForInsertTradeBatch implements pgx.CopyFromSource.
@@ -111,7 +111,7 @@ func (r *iteratorForInsertTradeBatch) Next() bool {
 
 func (r iteratorForInsertTradeBatch) Values() ([]interface{}, error) {
 	return []interface{}{
-		r.rows[0].Time,
+		r.rows[0].EventTime,
 		r.rows[0].TokenID,
 		r.rows[0].TradeID,
 		r.rows[0].Price,
@@ -128,5 +128,5 @@ func (r iteratorForInsertTradeBatch) Err() error {
 }
 
 func (q *Queries) InsertTradeBatch(ctx context.Context, arg []InsertTradeBatchParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"trades"}, []string{"time", "token_id", "trade_id", "price", "size", "side", "maker", "taker", "ingested_at"}, &iteratorForInsertTradeBatch{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"trades"}, []string{"event_time", "token_id", "trade_id", "price", "size", "side", "maker", "taker", "ingested_at"}, &iteratorForInsertTradeBatch{rows: arg})
 }

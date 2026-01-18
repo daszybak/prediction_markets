@@ -1,7 +1,7 @@
 -- Order book snapshots (raw depth data)
 -- Prices/sizes stored as BIGINT with scale 10^6 (e.g., 0.75 = 750000)
 CREATE TABLE IF NOT EXISTS order_book_snapshots (
-    time        TIMESTAMPTZ NOT NULL,
+    event_time  TIMESTAMPTZ NOT NULL,
     token_id    TEXT NOT NULL,
     side        TEXT NOT NULL,      -- 'bid' or 'ask'
     level       SMALLINT NOT NULL,  -- 0-9 for top 10 levels
@@ -10,17 +10,17 @@ CREATE TABLE IF NOT EXISTS order_book_snapshots (
 );
 
 -- Convert to hypertable
-SELECT create_hypertable('order_book_snapshots', 'time');
+SELECT create_hypertable('order_book_snapshots', 'event_time');
 
 -- Indexes for common queries
-CREATE INDEX idx_obs_token_time ON order_book_snapshots(token_id, time DESC);
-CREATE INDEX idx_obs_token_side_time ON order_book_snapshots(token_id, side, time DESC);
+CREATE INDEX idx_obs_token_time ON order_book_snapshots(token_id, event_time DESC);
+CREATE INDEX idx_obs_token_side_time ON order_book_snapshots(token_id, side, event_time DESC);
 
 -- Enable compression after 7 days
 ALTER TABLE order_book_snapshots SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'token_id, side',
-    timescaledb.compress_orderby = 'time DESC, level'
+    timescaledb.compress_orderby = 'event_time DESC, level'
 );
 
 SELECT add_compression_policy('order_book_snapshots', INTERVAL '7 days');

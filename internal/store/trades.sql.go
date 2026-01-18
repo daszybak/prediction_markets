@@ -13,14 +13,14 @@ import (
 )
 
 const getTradeByID = `-- name: GetTradeByID :one
-SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades WHERE trade_id = $1
+SELECT event_time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades WHERE trade_id = $1
 `
 
 func (q *Queries) GetTradeByID(ctx context.Context, tradeID pgtype.Text) (Trade, error) {
 	row := q.db.QueryRow(ctx, getTradeByID, tradeID)
 	var i Trade
 	err := row.Scan(
-		&i.Time,
+		&i.EventTime,
 		&i.TokenID,
 		&i.TradeID,
 		&i.Price,
@@ -34,9 +34,9 @@ func (q *Queries) GetTradeByID(ctx context.Context, tradeID pgtype.Text) (Trade,
 }
 
 const getTradesByToken = `-- name: GetTradesByToken :many
-SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
+SELECT event_time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
 WHERE token_id = $1
-ORDER BY time DESC
+ORDER BY event_time DESC
 LIMIT $2
 `
 
@@ -55,7 +55,7 @@ func (q *Queries) GetTradesByToken(ctx context.Context, arg GetTradesByTokenPara
 	for rows.Next() {
 		var i Trade
 		if err := rows.Scan(
-			&i.Time,
+			&i.EventTime,
 			&i.TokenID,
 			&i.TradeID,
 			&i.Price,
@@ -76,19 +76,19 @@ func (q *Queries) GetTradesByToken(ctx context.Context, arg GetTradesByTokenPara
 }
 
 const getTradesRange = `-- name: GetTradesRange :many
-SELECT time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
-WHERE token_id = $1 AND time >= $2 AND time <= $3
-ORDER BY time DESC
+SELECT event_time, token_id, trade_id, price, size, side, maker, taker, ingested_at FROM trades
+WHERE token_id = $1 AND event_time >= $2 AND event_time <= $3
+ORDER BY event_time DESC
 `
 
 type GetTradesRangeParams struct {
-	TokenID string    `json:"token_id"`
-	Time    time.Time `json:"time"`
-	Time_2  time.Time `json:"time_2"`
+	TokenID     string    `json:"token_id"`
+	EventTime   time.Time `json:"event_time"`
+	EventTime_2 time.Time `json:"event_time_2"`
 }
 
 func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) ([]Trade, error) {
-	rows, err := q.db.Query(ctx, getTradesRange, arg.TokenID, arg.Time, arg.Time_2)
+	rows, err := q.db.Query(ctx, getTradesRange, arg.TokenID, arg.EventTime, arg.EventTime_2)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) 
 	for rows.Next() {
 		var i Trade
 		if err := rows.Scan(
-			&i.Time,
+			&i.EventTime,
 			&i.TokenID,
 			&i.TradeID,
 			&i.Price,
@@ -118,12 +118,12 @@ func (q *Queries) GetTradesRange(ctx context.Context, arg GetTradesRangeParams) 
 }
 
 const insertTrade = `-- name: InsertTrade :exec
-INSERT INTO trades (time, token_id, trade_id, price, size, side, maker, taker, ingested_at)
+INSERT INTO trades (event_time, token_id, trade_id, price, size, side, maker, taker, ingested_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 type InsertTradeParams struct {
-	Time       time.Time   `json:"time"`
+	EventTime  time.Time   `json:"event_time"`
 	TokenID    string      `json:"token_id"`
 	TradeID    pgtype.Text `json:"trade_id"`
 	Price      int64       `json:"price"`
@@ -136,7 +136,7 @@ type InsertTradeParams struct {
 
 func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error {
 	_, err := q.db.Exec(ctx, insertTrade,
-		arg.Time,
+		arg.EventTime,
 		arg.TokenID,
 		arg.TradeID,
 		arg.Price,
@@ -150,7 +150,7 @@ func (q *Queries) InsertTrade(ctx context.Context, arg InsertTradeParams) error 
 }
 
 type InsertTradeBatchParams struct {
-	Time       time.Time   `json:"time"`
+	EventTime  time.Time   `json:"event_time"`
 	TokenID    string      `json:"token_id"`
 	TradeID    pgtype.Text `json:"trade_id"`
 	Price      int64       `json:"price"`
