@@ -148,6 +148,7 @@ func (c *Client) ReadMessage(ctx context.Context) (*Message, error) {
 type Message struct {
 	EventType      string `json:"event_type"`
 	Book           *Book
+	Books          []Book // For batch responses (initial dump)
 	PriceChange    *PriceChange
 	BestBidAsk     *BestBidAsk
 	TickSizeChange *TickSizeChange
@@ -238,6 +239,7 @@ type MarketResolved struct {
 
 const (
 	BookEvent           = "book"
+	BookBatchEvent      = "book_batch" // Internal: array of books from initial dump
 	PriceChangeEvent    = "price_change"
 	TickSizeChangeEvent = "tick_size_change"
 	BestBidAskEvent     = "best_bid_ask"
@@ -246,9 +248,22 @@ const (
 )
 
 func (c *Client) ParseMessage(msg []byte) (*Message, error) {
+	// Check if message is an array (initial dump after subscribing).
+	if len(msg) > 0 && msg[0] == '[' {
+		var books []Book
+		if err := json.Unmarshal(msg, &books); err != nil {
+			return nil, fmt.Errorf("couldn't parse book array: %w", err)
+		}
+		return &Message{
+			EventType: BookBatchEvent,
+			Books:     books,
+		}, nil
+	}
+
 	base := &Message{}
 	err := json.Unmarshal(msg, base)
 	if err != nil {
+		log.Printf("couldn't parse message: %s", msg)
 		return nil, fmt.Errorf("couldn't parse base message: %w", err)
 	}
 
@@ -320,6 +335,7 @@ func (c *Client) ParseMessage(msg []byte) (*Message, error) {
 			MarketResolved: mR,
 		}, nil
 	default:
-		return nil, fmt.Errorf("couldn't find event type")
+		// Return message with just the event type for unknown events.
+		return base, nil
 	}
 }
