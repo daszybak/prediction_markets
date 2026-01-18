@@ -113,7 +113,8 @@ func (q *Queries) SetTokenResolution(ctx context.Context, arg SetTokenResolution
 const upsertToken = `-- name: UpsertToken :exec
 INSERT INTO tokens (id, market_id, outcome, winning, settlement_price, created_at)
 VALUES ($1, $2, $3, $4, $5, NOW())
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (market_id, outcome) DO UPDATE SET
+    id = EXCLUDED.id,
     winning = EXCLUDED.winning,
     settlement_price = EXCLUDED.settlement_price
 `

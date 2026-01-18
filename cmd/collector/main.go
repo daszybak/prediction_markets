@@ -33,7 +33,7 @@ func main() {
 
 	var logLevel slog.Level
 	if cfg.LogLevel != "" {
-		if err := logLevel.UnmarshalText([]byte(cfg.LogLevel)); err != nil {
+		if err = logLevel.UnmarshalText([]byte(cfg.LogLevel)); err != nil {
 			slog.Error("invalid log_level", "value", cfg.LogLevel, "error", err)
 			os.Exit(1)
 		}
@@ -92,6 +92,7 @@ func main() {
 			MarketEndpoint: cfg.Platforms.PolyMarket.WS.MarketEndpoint,
 		},
 		MarketSyncInterval: cfg.Platforms.PolyMarket.MarketSyncInterval.Duration(),
+		MinLiquidity:       cfg.Platforms.PolyMarket.MinLiquidity,
 	}, collector.store, collector.engine, polymarketLogger)
 
 	for platformName, platform := range collector.platforms {

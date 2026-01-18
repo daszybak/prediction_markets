@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/daszybak/prediction_markets/internal/engine"
@@ -22,6 +23,7 @@ type Config struct {
 	GammaURL           string
 	Websocket          Websocket
 	MarketSyncInterval time.Duration
+	MinLiquidity       float64
 }
 
 type Websocket struct {
@@ -34,6 +36,7 @@ type Polymarket struct {
 	store            *store.Store
 	log              *slog.Logger
 	subscribedTokens hashset.Set[string]
+	subscribingMutex sync.Mutex
 	engine           *engine.Client
 
 	clob  *clob.Client
@@ -47,9 +50,10 @@ func New(cfg Config, s *store.Store, eng *engine.Client, log *slog.Logger) *Poly
 		config: cfg,
 		store:  s,
 		engine: eng,
-		log:    log.With("component", platformName),
+		log:    log,
 		clob:   clob.New(cfg.ClobURL),
 		gamma:  gamma.New(cfg.GammaURL),
+		subscribedTokens: hashset.NewSet[string](),
 	}
 }
 
@@ -89,11 +93,15 @@ func (p *Polymarket) processMessage(msg *websocket.Message) {
 	switch msg.EventType {
 	case websocket.BookEvent:
 		p.handleBook(msg.Book)
+	case websocket.BookBatchEvent:
+		for i := range msg.Books {
+			p.handleBook(&msg.Books[i])
+		}
+		p.log.Info("processed initial book dump", "count", len(msg.Books))
 	case websocket.PriceChangeEvent:
 		p.handlePriceChange(msg.PriceChange)
 	default:
-		// TODO Handle other events.
-		p.log.Info("not handling message event type", "event_type", msg.EventType)
+		p.log.Debug("not handling message event type", "event_type", msg.EventType)
 	}
 }
 
@@ -102,6 +110,8 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 		p.log.Warn("nil book in book event")
 		return
 	}
+
+	p.log.Debug("handling book", "token", book.AssetID, "bids", len(book.Buys), "asks", len(book.Sells))
 
 	// Parse event time from API.
 	eventTime, err := time.Parse(time.RFC3339Nano, book.Timestamp)
@@ -166,13 +176,10 @@ func (p *Polymarket) Stop(ctx context.Context) error {
 }
 
 func (p *Polymarket) syncLoop(ctx context.Context) {
-	// Sync markets before starting websocket
-	if err := p.syncMarkets(ctx); err != nil {
-		p.log.Error("initial market sync", "error", err)
-	}
-	tokenIDs, err := p.store.GetTokenIDsForPlatform(ctx, platformName)
+	// Initial subscription using liquidity filter.
+	tokenIDs, err := p.getLiquidTokenIDs()
 	if err != nil {
-		p.log.Error("intial market sync", "error", err)
+		p.log.Error("initial market sync", "error", err)
 	}
 
 	if err := p.subscribeToMarkets(ctx, tokenIDs); err != nil {
@@ -190,7 +197,7 @@ func (p *Polymarket) syncLoop(ctx context.Context) {
 				continue
 			}
 
-			tokenIDs, err := p.store.GetTokenIDsForPlatform(ctx, platformName)
+			tokenIDs, err := p.getLiquidTokenIDs()
 			if err != nil {
 				p.log.Error("syncing market", "error", err)
 				continue
@@ -235,14 +242,15 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 			return fmt.Errorf("upsert market %s: %w", m.ConditionID, err)
 		}
 
-		// Upsert tokens.
+		// Upsert tokens (ignore duplicate key errors for market_id/outcome constraint).
 		for _, t := range m.Tokens {
 			if err := p.store.UpsertToken(ctx, store.UpsertTokenParams{
 				ID:       t.TokenID,
 				MarketID: m.ConditionID,
 				Outcome:  t.Outcome,
 			}); err != nil {
-				return fmt.Errorf("upsert token %s: %w", t.TokenID, err)
+				// Log and continue - happens when token ID changes for same market/outcome.
+				p.log.Debug("upsert token skipped", "token", t.TokenID, "error", err)
 			}
 		}
 	}
@@ -253,16 +261,47 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 	return nil
 }
 
+// getLiquidTokenIDs returns token IDs for markets with liquidity >= minLiquidity.
+func (p *Polymarket) getLiquidTokenIDs() ([]string, error) {
+	markets, err := p.gamma.GetMarkets(p.config.MinLiquidity)
+	if err != nil {
+		return nil, fmt.Errorf("get gamma markets: %w", err)
+	}
+
+	var tokenIDs []string
+	for _, m := range markets {
+		tokenIDs = append(tokenIDs, m.ClobTokenIDs...)
+	}
+
+	p.log.Debug("fetched liquid markets", "markets", len(markets), "tokens", len(tokenIDs), "min_liquidity", p.config.MinLiquidity)
+	return tokenIDs, nil
+}
+
 func (p *Polymarket) subscribeToMarkets(ctx context.Context, tokenIDs []string) error {
-	if len(tokenIDs) == 0 {
-		p.log.Warn("no tokens to subscribe to")
+	p.subscribingMutex.Lock()
+	defer p.subscribingMutex.Unlock()
+
+	// Filter out already subscribed tokens.
+	filtered := make([]string, 0, len(tokenIDs))
+	for _, t := range tokenIDs {
+		if !p.subscribedTokens.Has(t) {
+			filtered = append(filtered, t)
+		}
+	}
+
+	if len(filtered) == 0 {
+		p.log.Info("no new tokens to subscribe to")
 		return nil
 	}
 
-	if err := p.ws.SubscribeMarket(ctx, tokenIDs, true, nil); err != nil {
-		return fmt.Errorf("subscribe: %w", err)
+	if err := p.ws.SubscribeMarket(ctx, filtered, true, nil); err != nil {
+		return fmt.Errorf("subscribe filtered %d: %w", len(filtered), err)
 	}
 
-	p.log.Info("subscribed to tokens", "count", len(tokenIDs))
+	for _, t := range filtered {
+		p.subscribedTokens.Set(t)
+	}
+
+	p.log.Info("subscribed to filtered tokens", "total", len(filtered))
 	return nil
 }

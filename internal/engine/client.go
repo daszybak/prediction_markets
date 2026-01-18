@@ -11,8 +11,12 @@ import (
 	"github.com/daszybak/prediction_markets/internal/price"
 )
 
-const maximumUpdates = 100
+const (
+	maximumUpdates       = 100000 // Main channel buffer for all incoming updates
+	maximumWorkerUpdates = 1000   // Per-worker channel buffer
+)
 
+// Client : Explore sharded map approach or locks inside the orderbook.
 type Client struct {
 	// tokenid:orderbook_worker
 	orderbookWorkers map[string]*OrderbookWorker
@@ -100,7 +104,7 @@ func (c *Client) Start(ctx context.Context) {
 				if !ok {
 					worker = &OrderbookWorker{
 						ob:      orderbook.New(),
-						updates: make(chan Update, maximumUpdates),
+						updates: make(chan Update, maximumWorkerUpdates),
 						logger:  c.logger.With("tokenID", update.TokenID),
 					}
 					c.orderbookWorkers[update.TokenID] = worker

@@ -32,6 +32,7 @@ type config struct {
 			GammaURL           string               `yaml:"gamma_url"`
 			ClobURL            string               `yaml:"clob_url"`
 			MarketSyncInterval configtypes.Duration `yaml:"market_sync_interval"`
+			MinLiquidity       float64              `yaml:"min_liquidity"`
 		} `yaml:"polymarket"`
 		Kalshi struct {
 			APIURL        string                    `yaml:"api_url"`

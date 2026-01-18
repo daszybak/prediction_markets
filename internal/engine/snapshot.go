@@ -49,6 +49,7 @@ func (sw *SnapshotWriter) Start(ctx context.Context) {
 func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 	snapshots := sw.engine.TakeSnapshots(sw.depth)
 	if len(snapshots) == 0 {
+		sw.logger.Debug("no orderbook workers exist yet")
 		return
 	}
 
@@ -90,6 +91,7 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 	}
 
 	if len(params) == 0 {
+		sw.logger.Debug("orderbooks empty", "workers", len(snapshots))
 		return
 	}
 

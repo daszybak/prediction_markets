@@ -3,6 +3,7 @@ package gamma
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -39,6 +40,9 @@ type Market struct {
 	Slug         string   `json:"slug"`
 	Outcomes     string   `json:"outcomes"`
 	ClobTokenIDs TokenIDs `json:"clobTokenIds"`
+	Liquidity    float64  `json:"liquidity,string"`
+	Volume       float64  `json:"volume,string"`
+	Volume24hr   float64  `json:"volume24hr,string"`
 }
 
 type Event struct {
@@ -46,8 +50,9 @@ type Event struct {
 	Markets []*Market `json:"markets"`
 }
 
-func (c *Client) GetMarkets() ([]*Market, error) {
-	return httpclient.GetResource[[]*Market](c.httpClient, c.baseURL, "/markets", []int{200})
+func (c *Client) GetMarkets(liquidityNumMin float64) ([]*Market, error) {
+	endpoint := fmt.Sprintf("/markets?liquidity_num_min=%f", liquidityNumMin)
+	return httpclient.GetResource[[]*Market](c.httpClient, c.baseURL, endpoint, []int{200})
 }
 
 func (c *Client) GetEventBySlug(slug string) (*Event, error) {

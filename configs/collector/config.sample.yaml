@@ -33,6 +33,7 @@ platforms:
     gamma_url: '${POLYMARKET_GAMMA_URL}'
     clob_url: '${POLYMARKET_CLOB_URL}'
     market_sync_interval: '${POLYMARKET_MARKET_SYNC_INTERVAL}'
+    min_liquidity: ${POLYMARKET_MIN_LIQUIDITY}  # Minimum liquidity in USD to subscribe to a market
 
   kalshi:
     api_url: '${KALSHI_API_URL}'
