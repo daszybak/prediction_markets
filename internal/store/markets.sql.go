@@ -20,7 +20,7 @@ func (q *Queries) DeleteMarket(ctx context.Context, id string) error {
 }
 
 const getMarket = `-- name: GetMarket :one
-SELECT id, platform, description, end_date, created_at, updated_at FROM markets WHERE id = $1
+SELECT id, platform, title, description, end_date, created_at, updated_at FROM markets WHERE id = $1
 `
 
 func (q *Queries) GetMarket(ctx context.Context, id string) (Market, error) {
@@ -29,6 +29,7 @@ func (q *Queries) GetMarket(ctx context.Context, id string) (Market, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Platform,
+		&i.Title,
 		&i.Description,
 		&i.EndDate,
 		&i.CreatedAt,
@@ -38,7 +39,7 @@ func (q *Queries) GetMarket(ctx context.Context, id string) (Market, error) {
 }
 
 const getMarketsByPlatform = `-- name: GetMarketsByPlatform :many
-SELECT id, platform, description, end_date, created_at, updated_at FROM markets WHERE platform = $1 ORDER BY created_at DESC
+SELECT id, platform, title, description, end_date, created_at, updated_at FROM markets WHERE platform = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) GetMarketsByPlatform(ctx context.Context, platform string) ([]Market, error) {
@@ -53,6 +54,7 @@ func (q *Queries) GetMarketsByPlatform(ctx context.Context, platform string) ([]
 		if err := rows.Scan(
 			&i.ID,
 			&i.Platform,
+			&i.Title,
 			&i.Description,
 			&i.EndDate,
 			&i.CreatedAt,
@@ -69,7 +71,7 @@ func (q *Queries) GetMarketsByPlatform(ctx context.Context, platform string) ([]
 }
 
 const listMarkets = `-- name: ListMarkets :many
-SELECT id, platform, description, end_date, created_at, updated_at FROM markets ORDER BY created_at DESC LIMIT $1 OFFSET $2
+SELECT id, platform, title, description, end_date, created_at, updated_at FROM markets ORDER BY created_at DESC LIMIT $1 OFFSET $2
 `
 
 type ListMarketsParams struct {
@@ -89,6 +91,7 @@ func (q *Queries) ListMarkets(ctx context.Context, arg ListMarketsParams) ([]Mar
 		if err := rows.Scan(
 			&i.ID,
 			&i.Platform,
+			&i.Title,
 			&i.Description,
 			&i.EndDate,
 			&i.CreatedAt,
@@ -105,9 +108,10 @@ func (q *Queries) ListMarkets(ctx context.Context, arg ListMarketsParams) ([]Mar
 }
 
 const upsertMarket = `-- name: UpsertMarket :exec
-INSERT INTO markets (id, platform, description, end_date, created_at, updated_at)
-VALUES ($1, $2, $3, $4, NOW(), NOW())
+INSERT INTO markets (id, platform, title, description, end_date, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
     description = EXCLUDED.description,
     end_date = EXCLUDED.end_date,
     updated_at = NOW()
@@ -116,6 +120,7 @@ ON CONFLICT (id) DO UPDATE SET
 type UpsertMarketParams struct {
 	ID          string     `json:"id"`
 	Platform    string     `json:"platform"`
+	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	EndDate     *time.Time `json:"end_date"`
 }
@@ -124,6 +129,7 @@ func (q *Queries) UpsertMarket(ctx context.Context, arg UpsertMarketParams) erro
 	_, err := q.db.Exec(ctx, upsertMarket,
 		arg.ID,
 		arg.Platform,
+		arg.Title,
 		arg.Description,
 		arg.EndDate,
 	)

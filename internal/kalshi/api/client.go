@@ -26,8 +26,12 @@ func New(baseURL string, apiKey string) *Client {
 
 type Market struct {
 	Ticker               string    `json:"ticker"`
+	EventTicker          string    `json:"event_ticker"`
+	Title                string    `json:"title"`
+	Subtitle             string    `json:"subtitle"`
 	RulesPrimary         string    `json:"rules_primary"`
 	RulesSecondary       string    `json:"rules_secondary"`
+	Status               string    `json:"status"`
 	LatestExpirationTime time.Time `json:"latest_expiration_time"`
 }
 

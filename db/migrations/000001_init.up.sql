@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE TABLE IF NOT EXISTS markets (
     id              TEXT PRIMARY KEY,
     platform        TEXT NOT NULL,  -- 'polymarket', 'kalshi'
+    title           TEXT NOT NULL,
     description     TEXT NOT NULL,
     end_date        TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),

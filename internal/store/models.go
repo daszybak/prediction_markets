@@ -14,6 +14,7 @@ import (
 type Market struct {
 	ID          string     `json:"id"`
 	Platform    string     `json:"platform"`
+	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	EndDate     *time.Time `json:"end_date"`
 	CreatedAt   time.Time  `json:"created_at"`

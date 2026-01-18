@@ -232,6 +232,7 @@ func (p *Polymarket) syncMarkets(ctx context.Context) error {
 		if err := p.store.UpsertMarket(ctx, store.UpsertMarketParams{
 			ID:          m.ConditionID,
 			Platform:    platformName,
+			Title:       m.Question,
 			Description: m.Description,
 			EndDate:     endDate,
 		}); err != nil {
