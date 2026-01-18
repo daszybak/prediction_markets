@@ -40,9 +40,7 @@ type Market struct {
 	Slug         string   `json:"slug"`
 	Outcomes     string   `json:"outcomes"`
 	ClobTokenIDs TokenIDs `json:"clobTokenIds"`
-	Liquidity    float64  `json:"liquidity,string"`
-	Volume       float64  `json:"volume,string"`
-	Volume24hr   float64  `json:"volume24hr,string"`
+	Liquidity    float64  `json:"liquidity,string,omitempty"`
 }
 
 type Event struct {

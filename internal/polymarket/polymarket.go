@@ -111,7 +111,7 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 		return
 	}
 
-	p.log.Debug("handling book", "token", book.AssetID, "bids", len(book.Buys), "asks", len(book.Sells))
+	p.log.Debug("handling book", "token", book.AssetID, "bids", len(book.Bids), "asks", len(book.Asks))
 
 	// Parse event time from API.
 	eventTime, err := time.Parse(time.RFC3339Nano, book.Timestamp)
@@ -119,8 +119,8 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 		eventTime = time.Now()
 	}
 
-	// Process buys (bids).
-	for _, order := range book.Buys {
+	// Process bids.
+	for _, order := range book.Bids {
 		p.engine.Send(engine.Update{
 			TokenID:   book.AssetID,
 			Price:     order.Price,
@@ -131,8 +131,8 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 		})
 	}
 
-	// Process sells (asks).
-	for _, order := range book.Sells {
+	// Process asks.
+	for _, order := range book.Asks {
 		p.engine.Send(engine.Update{
 			TokenID:   book.AssetID,
 			Price:     order.Price,
@@ -143,7 +143,7 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 		})
 	}
 
-	p.log.Debug("processed book", "token", book.AssetID, "bids", len(book.Buys), "asks", len(book.Sells))
+	p.log.Debug("processed book", "token", book.AssetID, "bids", len(book.Bids), "asks", len(book.Asks))
 }
 
 func (p *Polymarket) handlePriceChange(pc *websocket.PriceChange) {
