@@ -70,7 +70,7 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 				Level:      int16(level),
 				Price:      int64(bid.Price),
 				Size:       int64(bid.Size),
-				IngestedAt: &now, // When we stored it
+				IngestedAt: &bid.IngestedAt,
 			})
 		}
 		for level, ask := range snap.Asks {
@@ -85,7 +85,7 @@ func (sw *SnapshotWriter) writeSnapshots(ctx context.Context) {
 				Level:      int16(level),
 				Price:      int64(ask.Price),
 				Size:       int64(ask.Size),
-				IngestedAt: &now, // When we stored it
+				IngestedAt: &ask.IngestedAt,
 			})
 		}
 	}

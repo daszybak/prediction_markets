@@ -7,11 +7,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/daszybak/prediction_markets/internal/price"
 	"github.com/gorilla/websocket"
 )
+
+// UnixMillis is a time.Time that unmarshals from Unix milliseconds.
+type UnixMillis time.Time
+
+func (u *UnixMillis) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+	ms, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid unix millis: %w", err)
+	}
+	*u = UnixMillis(time.UnixMilli(ms))
+	return nil
+}
+
+func (u UnixMillis) Time() time.Time {
+	return time.Time(u)
+}
 
 const (
 	HandshakeTimeout    = 30 * time.Second
@@ -147,9 +166,10 @@ func (c *Client) ReadMessage(ctx context.Context) (*Message, error) {
 
 type Message struct {
 	EventType      string `json:"event_type"`
+	Received       time.Time
 	Book           *Book
 	Books          []Book // For batch responses (initial dump)
-	PriceChange    *PriceChange
+	PriceChangeMessage    *PriceChangeMessage
 	BestBidAsk     *BestBidAsk
 	TickSizeChange *TickSizeChange
 	LastTradePrice *LastTradePrice
@@ -160,7 +180,7 @@ type Message struct {
 type Book struct {
 	AssetID   string         `json:"asset_id"`
 	Market    string         `json:"market"`
-	Timestamp string         `json:"timestamp"`
+	Timestamp UnixMillis     `json:"timestamp"`
 	Hash      string         `json:"hash"`
 	Bids      []OrderSummary `json:"bids"`
 	Asks      []OrderSummary `json:"asks"`
@@ -169,6 +189,12 @@ type Book struct {
 type OrderSummary struct {
 	Price price.Price `json:"price"`
 	Size  price.Size  `json:"size"`
+}
+
+type PriceChangeMessage struct {
+	MarketConditionID string        `json:"market"`
+	PriceChanges      []PriceChange `json:"price_changes"`
+	Timestamp         UnixMillis    `json:"timestamp"`
 }
 
 type PriceChange struct {
@@ -247,95 +273,70 @@ const (
 	MarketResolvedEvent = "market_resolved"
 )
 
-func (c *Client) ParseMessage(msg []byte) (*Message, error) {
-	// Check if message is an array (initial dump after subscribing).
-	if len(msg) > 0 && msg[0] == '[' {
-		var books []Book
-		if err := json.Unmarshal(msg, &books); err != nil {
-			return nil, fmt.Errorf("couldn't parse book array: %w", err)
-		}
-		return &Message{
-			EventType: BookBatchEvent,
-			Books:     books,
-		}, nil
+func (c *Client) ParseMessage(rawMsg []byte) (*Message, error) {
+	msg := &Message{
+		Received: time.Now(),
 	}
 
-	base := &Message{}
-	err := json.Unmarshal(msg, base)
+	// Check if message is an array (initial dump after subscribing).
+	if len(rawMsg) > 0 && rawMsg[0] == '[' {
+		if err := json.Unmarshal(rawMsg, &msg.Books); err != nil {
+			return nil, fmt.Errorf("couldn't parse book array: %w", err)
+		}
+
+		msg.EventType = BookBatchEvent
+		return msg, nil
+	}
+
+	err := json.Unmarshal(rawMsg, msg)
 	if err != nil {
-		log.Printf("couldn't parse message: %s", msg)
+		log.Printf("couldn't parse message: %s", rawMsg)
 		return nil, fmt.Errorf("couldn't parse base message: %w", err)
 	}
 
-	switch base.EventType {
+	switch msg.EventType {
 	case BookEvent:
-		book := &Book{}
-		err = json.Unmarshal(msg, book)
+		msg.Book = &Book{}
+		err = json.Unmarshal(rawMsg, msg.Book)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse book event: %w", err)
 		}
 
-		return &Message{
-			EventType: BookEvent,
-			Book:      book,
-		}, nil
 	case PriceChangeEvent:
-		pC := &PriceChange{}
-		err = json.Unmarshal(msg, pC)
+		msg.PriceChangeMessage = &PriceChangeMessage{}
+		err = json.Unmarshal(rawMsg, msg.PriceChangeMessage)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse price change event: %w", err)
 		}
 
-		return &Message{
-			EventType:   PriceChangeEvent,
-			PriceChange: pC,
-		}, nil
 	case TickSizeChangeEvent:
-		tSC := &TickSizeChange{}
-		err = json.Unmarshal(msg, tSC)
+		msg.TickSizeChange = &TickSizeChange{}
+		err = json.Unmarshal(rawMsg, msg.TickSizeChange)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse tick size change event: %w", err)
 		}
 
-		return &Message{
-			EventType:      PriceChangeEvent,
-			TickSizeChange: tSC,
-		}, nil
 	case BestBidAskEvent:
-		bbA := &BestBidAsk{}
-		err = json.Unmarshal(msg, bbA)
+		msg.BestBidAsk = &BestBidAsk{}
+		err = json.Unmarshal(rawMsg, msg.BestBidAsk)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse best bid ask event: %w", err)
 		}
 
-		return &Message{
-			EventType:  PriceChangeEvent,
-			BestBidAsk: bbA,
-		}, nil
 	case NewMarketEvent:
-		nM := &NewMarket{}
-		err = json.Unmarshal(msg, nM)
+		msg.NewMarket = &NewMarket{}
+		err = json.Unmarshal(rawMsg, msg.NewMarket)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse new market event: %w", err)
 		}
 
-		return &Message{
-			EventType: PriceChangeEvent,
-			NewMarket: nM,
-		}, nil
 	case MarketResolvedEvent:
-		mR := &MarketResolved{}
-		err = json.Unmarshal(msg, mR)
+		msg.MarketResolved = &MarketResolved{}
+		err = json.Unmarshal(rawMsg, msg.MarketResolved)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse market resolved event: %w", err)
 		}
-
-		return &Message{
-			EventType:      PriceChangeEvent,
-			MarketResolved: mR,
-		}, nil
-	default:
-		// Return message with just the event type for unknown events.
-		return base, nil
 	}
+
+	return msg, nil
 }

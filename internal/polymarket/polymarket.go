@@ -92,20 +92,20 @@ func (p *Polymarket) Start(ctx context.Context) error {
 func (p *Polymarket) processMessage(msg *websocket.Message) {
 	switch msg.EventType {
 	case websocket.BookEvent:
-		p.handleBook(msg.Book)
+		p.handleBook(msg.Book, msg.Received)
 	case websocket.BookBatchEvent:
 		for i := range msg.Books {
-			p.handleBook(&msg.Books[i])
+			p.handleBook(&msg.Books[i], msg.Received)
 		}
 		p.log.Info("processed initial book dump", "count", len(msg.Books))
 	case websocket.PriceChangeEvent:
-		p.handlePriceChange(msg.PriceChange)
+		p.handlePriceChange(msg.PriceChangeMessage, msg.Received)
 	default:
 		p.log.Debug("not handling message event type", "event_type", msg.EventType)
 	}
 }
 
-func (p *Polymarket) handleBook(book *websocket.Book) {
+func (p *Polymarket) handleBook(book *websocket.Book, ingestedAt time.Time) {
 	if book == nil {
 		p.log.Warn("nil book in book event")
 		return
@@ -113,11 +113,7 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 
 	p.log.Debug("handling book", "token", book.AssetID, "bids", len(book.Bids), "asks", len(book.Asks))
 
-	// Parse event time from API.
-	eventTime, err := time.Parse(time.RFC3339Nano, book.Timestamp)
-	if err != nil {
-		eventTime = time.Now()
-	}
+	eventTime := book.Timestamp.Time()
 
 	// Process bids.
 	for _, order := range book.Bids {
@@ -127,7 +123,8 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 			Size:      order.Size,
 			Side:      "bids",
 			EventTime: eventTime,
-			IsDelta:   false, // Book is absolute snapshot
+			IngestedAt: ingestedAt,
+			IsDelta:   false,
 		})
 	}
 
@@ -139,6 +136,7 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 			Size:      order.Size,
 			Side:      "asks",
 			EventTime: eventTime,
+			IngestedAt: ingestedAt,
 			IsDelta:   false,
 		})
 	}
@@ -146,25 +144,23 @@ func (p *Polymarket) handleBook(book *websocket.Book) {
 	p.log.Debug("processed book", "token", book.AssetID, "bids", len(book.Bids), "asks", len(book.Asks))
 }
 
-func (p *Polymarket) handlePriceChange(pc *websocket.PriceChange) {
-	if pc == nil {
-		p.log.Warn("nil price_change in price_change event")
-		return
-	}
+func (p *Polymarket) handlePriceChange(pCM *websocket.PriceChangeMessage, ingestedAt time.Time) {
+	for _, pC := range pCM.PriceChanges {
+		side := "bids"
+		if pC.Side == "sell" {
+			side = "asks"
+		}
 
-	side := "bids"
-	if pc.Side == "sell" {
-		side = "asks"
+		p.engine.Send(engine.Update{
+			TokenID:   pC.AssetID,
+			Price:     pC.Price,
+			Size:      pC.Size,
+			Side:      side,
+			EventTime: pCM.Timestamp.Time(),
+			IngestedAt: ingestedAt,
+			IsDelta:   false,
+		})
 	}
-
-	p.engine.Send(engine.Update{
-		TokenID:   pc.AssetID,
-		Price:     pc.Price,
-		Size:      pc.Size,
-		Side:      side,
-		EventTime: time.Now(), // PriceChange doesn't have timestamp
-		IsDelta:   false,      // Polymarket sends absolute sizes
-	})
 }
 
 // Stop closes the websocket connection.

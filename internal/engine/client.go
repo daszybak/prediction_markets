@@ -36,7 +36,8 @@ type Update struct {
 	Size      price.Size
 	TokenID   string
 	Side      string
-	EventTime time.Time // Timestamp from source API (zero = use current time)
+	EventTime time.Time 
+	IngestedAt time.Time
 	IsDelta   bool      // true = delta update, false = absolute set
 }
 
@@ -78,9 +79,9 @@ func (obw *OrderbookWorker) start(ctx context.Context) {
 			}
 
 			if update.IsDelta {
-				obw.ob.Update(update.Price, update.Size, update.Side, eventTime)
+				obw.ob.Update(update.Price, update.Size, update.Side, eventTime, update.IngestedAt)
 			} else {
-				obw.ob.Set(update.Price, update.Size, update.Side, eventTime)
+				obw.ob.Set(update.Price, update.Size, update.Side, eventTime, update.IngestedAt)
 			}
 		}
 	}

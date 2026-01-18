@@ -15,6 +15,7 @@ type Level struct {
 	Price     price.Price
 	Size      price.Size
 	UpdatedAt time.Time // When this level was last updated (event time from source)
+	IngestedAt time.Time // When this level was ingested by the system
 }
 
 // lessAsc compares levels by price ascending (for asks: lowest first).
@@ -46,7 +47,7 @@ func New() *Orderbook {
 // Set sets an absolute size at a price level.
 // If size <= 0, the level is removed.
 // eventTime is the timestamp from the source API (use time.Now() if unavailable).
-func (ob *Orderbook) Set(p price.Price, size price.Size, side string, eventTime time.Time) error {
+func (ob *Orderbook) Set(p price.Price, size price.Size, side string, eventTime time.Time, ingestedAt time.Time) error {
 	tree, err := ob.getTree(side)
 	if err != nil {
 		return err
@@ -57,14 +58,14 @@ func (ob *Orderbook) Set(p price.Price, size price.Size, side string, eventTime 
 		return nil
 	}
 
-	tree.ReplaceOrInsert(Level{Price: p, Size: size, UpdatedAt: eventTime})
+	tree.ReplaceOrInsert(Level{Price: p, Size: size, UpdatedAt: eventTime, IngestedAt: ingestedAt})
 	return nil
 }
 
 // Update applies a delta to a price level.
 // If the resulting size <= 0, the level is removed.
 // eventTime is the timestamp from the source API (use time.Now() if unavailable).
-func (ob *Orderbook) Update(p price.Price, delta price.Size, side string, eventTime time.Time) error {
+func (ob *Orderbook) Update(p price.Price, delta price.Size, side string, eventTime time.Time, ingestedAt time.Time) error {
 	tree, err := ob.getTree(side)
 	if err != nil {
 		return err
@@ -82,7 +83,7 @@ func (ob *Orderbook) Update(p price.Price, delta price.Size, side string, eventT
 		return nil
 	}
 
-	tree.ReplaceOrInsert(Level{Price: p, Size: newSize, UpdatedAt: eventTime})
+	tree.ReplaceOrInsert(Level{Price: p, Size: newSize, UpdatedAt: eventTime, IngestedAt: ingestedAt})
 	return nil
 }
 
