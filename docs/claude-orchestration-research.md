@@ -223,6 +223,107 @@ If we ever want to add Claude-driven orchestration to `prediction_markets`:
 
 ---
 
+---
+
+## Part 3 — DB-backed, TDD-enforcing, recursive orchestrators (the "what you actually want" tier)
+
+Two repos match a very specific architecture: spec → orchestrator → relational DB
+(tasks ⇒ subtasks one-to-many) → spawn subagents per subtask → subagents write
+tests, run tests, implement, feed results back to DB → orchestrator polls,
+decides, can spawn more → subagents can recursively become orchestrators.
+
+### dsifry/metaswarm
+
+- **DB:** BEADS — git-native SQLite + markdown sidecars in `.beads/`
+  - `.beads/plans/active-plan.md` — approved plans
+  - `.beads/context/execution-state.md` — live state, survives compaction
+  - `.beads/context/project-context.md` — long-lived facts
+- **Spawn:** `Task()` tool — fresh Claude per subagent. Optional persistent
+  Team Mode via `TeamCreate()` + `SendMessage()` when context retention matters.
+- **Feedback:** subagents return Markdown/JSON; orchestrator parses and writes
+  to BEADS via `bd create` + commits to git.
+- **TDD enforcement:** prompt-level mandate ("TDD is mandatory — write tests
+  first, watch them fail, then implement") + Phase 2 (VALIDATE) which runs
+  coverage and blocks. Not state-machine-coded — relies on agent discipline.
+- **Coverage gate:** `.coverage-thresholds.json` with
+  `{ "enforcement": { "command": "pnpm test:coverage", "blockPRCreation": true,
+  "blockTaskCompletion": true } }`. Read by orchestrator, BLOCKING.
+- **Recursion:** Swarm Coordinator → Issue Orchestrator → Sub-Issue
+  Orchestrators (~3 levels typical). Issue Orchestrator can spawn smaller
+  Issue Orchestrators for sub-epics. Tracked via BEADS epic IDs.
+- **Killer feature:** **adversarial review loop** — Phase 3 spawns a *fresh*
+  `Task()` instance (never a teammate, never resumed) to review the work unit
+  against spec DoD items, with file:line evidence. FAIL → loop back to
+  IMPLEMENT, max 3 attempts. Independence is enforced.
+- **Resilience:** `hooks/session-start.sh` runs `bd prime` on SessionStart to
+  reload state — resumes interrupted orchestrations across compactions.
+
+### eyaltoledano/claude-task-master
+
+- **DB:** **Supabase Postgres** (real relational, not JSON-as-DB)
+  - `tasks` table with `id`, `parent_task_id` FK, `brief_id`, `display_id`
+    (e.g. `"1.2.3"`), status enum (pending/in-progress/done/review/deferred/
+    cancelled/blocked), `complexity`, `completed_subtasks`/`total_subtasks`,
+    `metadata jsonb` for coverage/logs.
+  - Hierarchy via `parent_task_id` FK, unlimited practical depth.
+- **Spawn:** MCP tools (registered with FastMCP) — the tool *is* the subagent.
+  No subprocess; in-context execution. See
+  `apps/mcp/src/tools/autopilot/start.tool.ts`.
+- **Feedback:** synchronous DB writes — subagent updates `tasks` row directly;
+  orchestrator polls `tmCore.tasks.get(taskId)` before advancing.
+- **TDD enforcement:** **structural via state machine.** `WorkflowOrchestrator`
+  defines phases `PREFLIGHT → BRANCH_SETUP → SUBTASK_LOOP(RED → GREEN → COMMIT)
+  → FINALIZE → COMPLETE` with `phaseGuards: Map<WorkflowPhase, (ctx) => boolean>`.
+  Cannot transition RED→GREEN unless tests exist; GREEN→COMMIT unless tests pass.
+  Code-level, not prompt-level.
+- **Coverage gate:** per-task `metadata.coverageThreshold`. After GREEN phase,
+  MCP tool runs `npm test -- --coverage`, parses output, blocks COMMIT if below.
+- **Recursion:** native via `parent_task_id`. Subtask `1.2` can be
+  `expand_task`'d into `1.2.1`, `1.2.2`. No hard depth cap.
+- **Resilience:** none built-in — in-memory state lost on session end (can be
+  rebuilt from DB, but no equivalent of `bd prime`).
+
+### Comparison
+
+| Aspect | metaswarm | claude-task-master |
+|---|---|---|
+| DB | BEADS (SQLite + git markdown) | Supabase Postgres |
+| Hierarchy | Epic→Task→Subtask (3 levels) | `parent_task_id` FK, unlimited |
+| Spawn | `Task()` fresh subagent | MCP tool in-context |
+| Feedback | async, return + git commit | sync, DB write/poll |
+| TDD enforcement | prompt + validate phase | **state machine phase guards** |
+| Coverage gate | `.coverage-thresholds.json` (file) | per-task `metadata` (DB) |
+| Recursion | sub-orchestrators (3 levels typical) | unlimited FK depth |
+| Resume after compaction | yes, `bd prime` | no |
+| Adversarial review | yes, fresh Task() reviewer | no |
+
+### Picking one for this repo
+
+`prediction_markets` is Go + Postgres. **claude-task-master is the natural fit:**
+
+- Its data model maps onto a real Postgres schema you can join against from Go.
+- The state-machine TDD gate is code-enforced, not vibes.
+- Postgres is already infrastructure here — no new sidecar.
+
+The patterns worth porting from metaswarm *regardless*:
+
+1. **Adversarial review with a fresh `Task()` instance** (never teammate, never
+   resumed). Prevents the implementer-reviews-self failure mode.
+2. **`phaseGuards: Map<WorkflowPhase, fn>`** — function-per-transition that
+   returns false to block. Same shape as task-master, but lift it into a
+   reusable primitive.
+3. **`.coverage-thresholds.json` with `blockPRCreation: true`** — declarative
+   coverage gate that any tool can read.
+
+### Standalone primitive worth knowing
+
+**BEADS** is its own project (separate from metaswarm) — it's the SQLite task
+graph + CLI metaswarm composes on top of. If you want git-native task tracking
+without adopting a whole orchestrator, BEADS gives you `bd create`,
+`bd list`, `bd prime` and you write the orchestration yourself.
+
+---
+
 ## Sources
 
 - [ruvnet/ruflo](https://github.com/ruvnet/ruflo)
@@ -256,3 +357,8 @@ If we ever want to add Claude-driven orchestration to `prediction_markets`:
 - [Vibe Kanban](https://vibekanban.com/)
 - [Claude Code Routines (docs)](https://code.claude.com/docs/en/routines)
 - [Feature request #30646 — Scheduled / cron task support](https://github.com/anthropics/claude-code/issues/30646)
+- [dsifry/metaswarm](https://github.com/dsifry/metaswarm)
+- [eyaltoledano/claude-task-master](https://github.com/eyaltoledano/claude-task-master)
+- [vanzan01/claude-code-sub-agent-collective](https://github.com/vanzan01/claude-code-sub-agent-collective)
+- [gbFinch/agentic-orchestration](https://github.com/gbFinch/agentic-orchestration)
+- [github/spec-kit](https://github.com/github/spec-kit)
